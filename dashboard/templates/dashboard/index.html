@@ -1,0 +1,591 @@
+{% load dashboard_extras %}
+{% load tz %}
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Suivi prothèses</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #f0f2f5;
+      color: #1a1d23;
+      min-height: 100vh;
+      padding: 2rem 1.5rem;
+    }
+
+    /* ── Page header ───────────────────────────────────────────── */
+    .page-header {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+    }
+
+    h1 {
+      font-size: 1.6rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: #111;
+    }
+
+    h1 .badge {
+      display: inline-block;
+      background: #2563eb;
+      color: #fff;
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 999px;
+      vertical-align: middle;
+      margin-left: 0.5rem;
+    }
+
+    /* ── Filter buttons ────────────────────────────────────────── */
+    .btn-filter {
+      background: #2563eb;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 0.5rem 1rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      transition: background 0.2s, box-shadow 0.2s;
+    }
+    .btn-filter:hover { background: #1d4ed8; }
+    .btn-filter.active { background: #16a34a; }
+    .btn-filter.active:hover { background: #15803d; }
+
+    /* ── Colors button ─────────────────────────────────────────── */
+    .btn-colors {
+      margin-left: auto;
+      background: #fff;
+      border: 1.5px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 0.5rem 1rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .btn-colors:hover {
+      border-color: #2563eb;
+      box-shadow: 0 0 0 3px #dbeafe;
+    }
+
+    /* ── Table ─────────────────────────────────────────────────── */
+    .table-wrapper {
+      overflow-x: auto;
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,.08), 0 4px 16px rgba(0,0,0,.05);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.875rem;
+    }
+
+    /* On applique les limites aux cellules de titre et de contenu */
+    th, td {
+      max-width: 400px;       /* 2. Définit la largeur max */
+      overflow: wrap;      /* 3. Cache ce qui dépasse */
+      text-overflow: ellipsis;/* 4. Ajoute les points de suspension (...) */
+    }
+
+    thead {
+      background: #f8f9fb;
+      border-bottom: 2px solid #e5e7eb;
+    }
+
+    th {
+      padding: 0;
+      font-weight: 600;
+      white-space: nowrap;
+      color: #6b7280;
+      text-transform: uppercase;
+      font-size: 0.72rem;
+      letter-spacing: 0.06em;
+    }
+
+    th a {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 0.9rem 1rem;
+      color: inherit;
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+    th a:hover { color: #2563eb; }
+    th.active a { color: #2563eb; }
+
+    .sort-icon { font-style: normal; font-size: 0.8rem; opacity: 0.4; }
+    th.active .sort-icon { opacity: 1; }
+
+    th.no-sort { padding: 0.9rem 1rem; text-align: left; }
+
+    tbody tr {
+      border-bottom: 1px solid rgba(0,0,0,0.06);
+      transition: filter 0.1s;
+    }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { filter: brightness(0.94); }
+
+    td { padding: 0.75rem 1rem; vertical-align: middle; }
+    td.active-col { background: rgba(0,0,0,0.04); }
+
+    .empty {
+      text-align: center;
+      padding: 3rem 1rem;
+      color: #9ca3af;
+    }
+
+    /* ── Modals ────────────────────────────────────────────────── */
+    .modal-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.4);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-backdrop.open { display: flex; }
+
+    .modal {
+      background: #fff;
+      border-radius: 14px;
+      padding: 1.5rem;
+      width: 420px;
+      max-width: 95vw;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+    }
+    .modal h2 { font-size: 1.1rem; font-weight: 700; margin-bottom: 1.2rem; }
+
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.75rem;
+      margin-top: 1.2rem;
+    }
+    .btn-cancel {
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      border: 1.5px solid #e5e7eb;
+      background: #fff;
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
+    .btn-ok {
+      padding: 0.5rem 1.2rem;
+      border-radius: 8px;
+      border: none;
+      background: #2563eb;
+      color: #fff;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn-ok:hover { background: #1d4ed8; }
+
+    /* ── Color modal specifics ─────────────────────────────────── */
+    .color-row {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.5rem 0;
+      border-bottom: 1px solid #f0f2f5;
+    }
+    .color-row:last-child { border-bottom: none; }
+
+    .color-swatch {
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      border: 2px solid #e5e7eb;
+      cursor: pointer;
+      flex-shrink: 0;
+      position: relative;
+      overflow: hidden;
+    }
+    .color-swatch input[type="color"] {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      opacity: 0;
+      cursor: pointer;
+      border: none;
+      padding: 0;
+    }
+
+    .color-label { flex: 1; font-size: 0.9rem; }
+
+    .save-status {
+      font-size: 0.78rem;
+      color: #6b7280;
+      margin-top: 0.5rem;
+      text-align: right;
+      min-height: 1.2em;
+    }
+
+    /* ── Acts modal specifics ──────────────────────────────────── */
+    .select-all-row {
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.5rem;
+      margin-bottom: 0.75rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 2px solid #e5e7eb;
+    }
+    .btn-select-text {
+      background: none;
+      border: none;
+      color: #2563eb;
+      font-size: 0.8rem;
+      cursor: pointer;
+      padding: 0;
+      text-decoration: underline;
+    }
+
+    .checkbox-row {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.5rem 0;
+      border-bottom: 1px solid #f0f2f5;
+      cursor: pointer;
+    }
+    .checkbox-row:last-child { border-bottom: none; }
+    .checkbox-row input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+      cursor: pointer;
+      accent-color: #2563eb;
+    }
+  </style>
+</head>
+<body>
+
+<!-- Force Django to set the CSRF cookie -->
+<form style="display:none">{% csrf_token %}</form>
+
+<div class="page-header">
+  <h1>
+    Suivi prothèses
+    <span class="badge">
+      {{ records|length }} enregistrement{{ records|length|pluralize }}
+    </span>
+  </h1>
+
+  <button class="btn-filter" id="btn-acts" onclick="openActsModal()">
+    📋 Choix des actes
+  </button>
+  <button class="btn-filter" id="btn-received" onclick="toggleFilter('receive')">
+    📥 Réception aujourd'hui
+  </button>
+  <button class="btn-filter" id="btn-sent" onclick="toggleFilter('send')">
+    📤 Envoi aujourd'hui
+  </button>
+  <button class="btn-filter" id="btn-sync" onclick="syncRecords()">
+    🔄 Rafraichir
+  </button>
+
+  <button class="btn-colors" onclick="openColorsModal()">🎨 Couleurs des actes</button>
+</div>
+
+<div class="table-wrapper">
+  <table>
+    <thead>
+      <tr>
+        {% for field, label, url in columns_with_urls %}
+          <th class="{% if sort_by == field %}active{% endif %}">
+            <a href="{{ url }}">
+              {{ label }}
+              <i class="sort-icon">
+                {% if sort_by == field %}
+                  {% if direction == "asc" %}↑{% else %}↓{% endif %}
+                {% else %}⇅{% endif %}
+              </i>
+            </a>
+          </th>
+        {% endfor %}
+        <th class="no-sort">Commentaires</th>
+        <th class="no-sort">URL</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for record in records %}
+        <tr style="background-color: {{ colors|get_item:record.procedure|default:'#ffffff' }};"
+            data-receive="{{ record.receive_date|date:'Y-m-d'|default:'' }}"
+            data-send="{{ record.send_date|date:'Y-m-d'|default:'' }}">
+          <td class="{% if sort_by == 'prosthetist' %}active-col{% endif %}">
+            {{ record.prosthetist|default:"—" }}
+          </td>
+          <td class="{% if sort_by == 'patient' %}active-col{% endif %}">
+            <strong>{{ record.patient|default:"—" }}</strong>
+          </td>
+          <td class="{% if sort_by == 'procedure' %}active-col{% endif %}">
+            {{ record.procedure|default:"—" }}
+          </td>
+          <td class="{% if sort_by == 'send_date' %}active-col{% endif %}">
+            {{ record.send_date|date:"d/m/Y"|default:"—" }}
+          </td>
+          <td class="{% if sort_by == 'receive_date' %}active-col{% endif %}">
+            {{ record.receive_date|date:"d/m/Y"|default:"—" }}
+          </td>
+          <td class="{% if sort_by == 'impression_date' %}active-col{% endif %}">
+            {{ record.impression_date|date:"d/m/Y H:i"|default:"—" }}
+          </td>
+          <td class="{% if sort_by == 'duration' %}active-col{% endif %}">
+            {% if record.duration is not None %}{{ record.duration }}{% else %}—{% endif %}
+          </td>
+          <td class="{% if sort_by == 'appointment_date' %}active-col{% endif %}">
+            {{ record.appointment_date|date:"d/m/Y H:i"|default:"—" }}
+          </td>
+          <td>{{ record.comments|default:"—" }}</td>
+          <td>
+            {% if record.url %}
+              <a href="{{ record.url }}" target="_blank" rel="noopener"
+                 style="color:#2563eb;font-size:0.8rem;">Ouvrir dans OrthoAdvance ↗</a>
+            {% else %}—{% endif %}
+          </td>
+        </tr>
+      {% empty %}
+        <tr>
+          <td colspan="10" class="empty">Aucun enregistrement trouvé.</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- Color configuration modal -->
+<div class="modal-backdrop" id="colorModal">
+  <div class="modal">
+    <h2>Couleurs par acte</h2>
+    <div id="colorList"></div>
+    <p class="save-status" id="saveStatus"></p>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeColorsModal()">Annuler</button>
+      <button class="btn-ok" onclick="saveAndClose()">OK</button>
+    </div>
+  </div>
+</div>
+
+<!-- Acts filter modal -->
+<div class="modal-backdrop" id="actsModal">
+  <div class="modal">
+    <h2>Filtrer par acte</h2>
+    <div class="select-all-row">
+      <button class="btn-select-text" onclick="selectAllActs(true)">Tout cocher</button>
+      <button class="btn-select-text" onclick="selectAllActs(false)">Tout décocher</button>
+    </div>
+    <div id="actsList"></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeActsModal()">Annuler</button>
+      <button class="btn-ok" onclick="applyActsFilter()">OK</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+
+    const colors = {{ colors_json|safe }};
+    const today = new Date().toISOString().split("T")[0];
+    const filterState = { receive: false, send: false };
+    let activeActs = null;
+
+    // Collect unique acts from rendered table rows
+    const allActs = [...new Set(
+      [...document.querySelectorAll("tbody tr")]
+        .map(row => row.children[2]?.textContent.trim())
+        .filter(v => v && v !== "—")
+    )].sort();
+
+    // ── Acts filter ─────────────────────────────────────────────
+
+    window.openActsModal = function () {
+      const list = document.getElementById("actsList");
+      list.innerHTML = "";
+
+      for (const act of allActs) {
+        const isChecked = activeActs === null || activeActs.has(act);
+        const row = document.createElement("label");
+        row.className = "checkbox-row";
+        row.innerHTML = `
+          <input type="checkbox" value="${act}" ${isChecked ? "checked" : ""}>
+          <span>${act}</span>
+        `;
+        list.appendChild(row);
+      }
+
+      document.getElementById("actsModal").classList.add("open");
+    };
+
+    window.selectAllActs = function (checked) {
+      document.querySelectorAll("#actsList input[type='checkbox']")
+        .forEach(cb => { cb.checked = checked; });
+    };
+
+    window.closeActsModal = function () {
+      document.getElementById("actsModal").classList.remove("open");
+    };
+
+    window.applyActsFilter = function () {
+      const checked = [...document.querySelectorAll("#actsList input[type='checkbox']:checked")]
+        .map(cb => cb.value);
+
+      // No filter if all acts are selected
+      activeActs = checked.length === allActs.length ? null : new Set(checked);
+
+      document.getElementById("btn-acts")
+        .classList.toggle("active", activeActs !== null);
+
+      closeActsModal();
+      applyFilters();
+    };
+
+    // ── Date filters ─────────────────────────────────────────────
+
+    window.toggleFilter = function (field) {
+      filterState[field] = !filterState[field];
+
+      const btnId = field === "receive" ? "btn-received" : "btn-sent";
+      document.getElementById(btnId)
+        .classList.toggle("active", filterState[field]);
+
+      applyFilters();
+    };
+
+    function applyFilters() {
+      document.querySelectorAll("tbody tr").forEach(row => {
+        if (row.querySelector(".empty")) return;
+
+        const passReceive = !filterState.receive || row.dataset.receive === today;
+        const passSend    = !filterState.send    || row.dataset.send === today;
+        const act         = row.children[2]?.textContent.trim();
+        const passActs    = activeActs === null   || activeActs.has(act);
+
+        row.style.display = (passReceive && passSend && passActs) ? "" : "none";
+      });
+    }
+
+    // ── Color modal ───────────────────────────────────────────────
+
+    window.openColorsModal = function () {
+      const list = document.getElementById("colorList");
+      list.innerHTML = "";
+
+      for (const [proc, color] of Object.entries(colors)) {
+        const row = document.createElement("div");
+        row.className = "color-row";
+        row.innerHTML = `
+          <div class="color-swatch" style="background:${color}">
+            <input type="color" value="${color}"
+                   data-proc="${proc}"
+                   oninput="updateSwatch(this)"
+                   onchange="updateSwatch(this)">
+          </div>
+          <span class="color-label">${proc}</span>
+        `;
+        list.appendChild(row);
+      }
+
+      document.getElementById("saveStatus").textContent = "";
+      document.getElementById("colorModal").classList.add("open");
+    };
+
+    window.updateSwatch = function (input) {
+      colors[input.dataset.proc] = input.value;
+      input.parentElement.style.background = input.value;
+    };
+
+    window.closeColorsModal = function () {
+      document.getElementById("colorModal").classList.remove("open");
+    };
+
+    window.syncRecords = async function () {
+      const btn = document.getElementById("btn-sync");
+      btn.textContent = "⏳ Sync…";
+      btn.disabled = true;
+
+      try {
+        const response = await fetch("sync/", {
+          method: "POST",
+          headers: { "X-CSRFToken": getCookie("csrftoken") },
+        });
+        const data = await response.json();
+        if (data.ok) {
+          btn.textContent = `✅ ${data.result.created} créés, ${data.result.updated} mis à jour`;
+          setTimeout(() => location.reload(), 1500);
+        } else {
+          btn.textContent = "❌ Erreur";
+        }
+      } catch {
+        btn.textContent = "❌ Erreur réseau";
+      } finally {
+        btn.disabled = false;
+      }
+    };
+
+    window.saveAndClose = async function () {
+      const status = document.getElementById("saveStatus");
+      status.textContent = "Enregistrement…";
+
+      try {
+        const response = await fetch("save-colors/", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": getCookie("csrftoken"),
+          },
+          body: JSON.stringify({ colors }),
+        });
+
+        if (response.ok) {
+          closeColorsModal();
+          location.reload();
+        } else {
+          status.textContent = "Erreur lors de la sauvegarde.";
+        }
+      } catch {
+        status.textContent = "Erreur réseau.";
+      }
+    };
+
+    function getCookie(name) {
+      const value = `; ${document.cookie}`;
+      const parts = value.split(`; ${name}=`);
+      if (parts.length === 2) return parts.pop().split(";").shift();
+      return "";
+    }
+
+    // Close modals on backdrop click
+    document.getElementById("colorModal").addEventListener("click", function (e) {
+      if (e.target === this) closeColorsModal();
+    });
+    document.getElementById("actsModal").addEventListener("click", function (e) {
+      if (e.target === this) closeActsModal();
+    });
+
+  }); // end DOMContentLoaded
+</script>
+
+</body>
+</html>

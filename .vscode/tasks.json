@@ -1,0 +1,41 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Django: Run Server",
+            "type": "shell",
+            "command": ".venvwin\\Scripts\\python manage.py runserver",
+            "group": "test",
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Django: Make Migrations",
+            "type": "shell",
+            "command": ".venvwin\\Scripts\\python manage.py makemigrations",
+            "group": "build",
+            "problemMatcher": []
+        },
+        {
+            "label": "Django: Migrate",
+            "type": "shell",
+            "command": ".venvwin\\Scripts\\python manage.py migrate",
+            "group": "build",
+            "dependsOn": ["Django: Make Migrations"],
+            "problemMatcher": []
+        },
+        {
+            "label": "Django: Import Data",
+            "type": "shell",
+            "command": ".venvwin\\Scripts\\python import_data.py",
+            "group": "none",
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            }
+        }
+    ]
+}

@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+
+# Virtual environments
+.venv/
+.venvwin/
+venv/
+env/
+
+# Django
+*.sqlite3
+media/
+staticfiles/
+
+# Secrets
+.env
+*.env
+local_settings.py
+
+# Potentially sensitive information / Created at startup
+dashboard/configuration.yaml
+
+# Logs
+logs/
+*.log
+
+# IDE (keep .vscode to retrieve setup)
+# .vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build / packaging
+dist/
+build/
+*.egg-info/
