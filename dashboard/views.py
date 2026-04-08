@@ -1,7 +1,7 @@
 import json
 
 from django.http import JsonResponse
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.views.decorators.http import require_POST
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import ensure_csrf_cookie
@@ -11,6 +11,8 @@ from .services import (
     save_colors,
     sync_procedures_to_config,
     refresh_records_from_external,
+    is_orthoaget_configured,
+    setup_orthoaget,
     SORTABLE_FIELDS,
 )
 
@@ -27,7 +29,30 @@ COLUMNS = [
 ]
 
 @ensure_csrf_cookie
+def setup_view(request):
+    if is_orthoaget_configured():
+        return redirect("home")
+
+    error = None
+    if request.method == "POST":
+        url     = request.POST.get("url",      "").strip()
+        login   = request.POST.get("login",    "").strip()
+        pwd     = request.POST.get("password", "").strip()
+        webhook = request.POST.get("webhook",  "").strip()
+
+        if not url or not login or not pwd:
+            error = "L'URL, le login et le mot de passe sont obligatoires."
+        else:
+            setup_orthoaget(url, login, pwd, webhook)
+            return redirect("home")
+
+    return render(request, "dashboard/setup.html", {"error": error})
+
+
+@ensure_csrf_cookie
 def home(request):
+    if not is_orthoaget_configured():
+        return redirect("setup")
     """Display the sortable prosthesis records table."""
     sort_by = request.GET.get("sort", "patient")
     direction = request.GET.get("dir", "asc")
@@ -36,6 +61,12 @@ def home(request):
         sort_by = "patient"
     if direction not in ("asc", "desc"):
         direction = "asc"
+
+    cache_control = request.META.get("HTTP_CACHE_CONTROL", "")
+    has_referer = bool(request.META.get("HTTP_REFERER"))
+    is_browser_refresh = "max-age=0" in cache_control or "no-cache" in cache_control
+    if not has_referer or is_browser_refresh:
+        refresh_records_from_external()
 
     records = get_sorted_records(sort_by=sort_by, direction=direction)
     colors = sync_procedures_to_config()

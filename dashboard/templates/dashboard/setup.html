@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Configuration — Suivi prothèses</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #f0f2f5;
+      color: #1a1d23;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem 1.5rem;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 14px;
+      box-shadow: 0 1px 3px rgba(0,0,0,.08), 0 4px 16px rgba(0,0,0,.05);
+      padding: 2rem 2.5rem;
+      width: 440px;
+      max-width: 100%;
+    }
+
+    h1 {
+      font-size: 1.4rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: 0.4rem;
+    }
+
+    .subtitle {
+      font-size: 0.85rem;
+      color: #6b7280;
+      margin-bottom: 1.8rem;
+    }
+
+    .form-group {
+      margin-bottom: 1.1rem;
+    }
+
+    label {
+      display: block;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #374151;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.4rem;
+    }
+
+    .hint {
+      font-size: 0.75rem;
+      color: #9ca3af;
+      font-weight: 400;
+      text-transform: none;
+      letter-spacing: 0;
+      margin-left: 0.4rem;
+    }
+
+    input[type="text"],
+    input[type="password"],
+    input[type="email"] {
+      width: 100%;
+      padding: 0.55rem 0.85rem;
+      border: 1.5px solid #e5e7eb;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-family: inherit;
+      transition: border-color 0.15s, box-shadow 0.15s;
+      outline: none;
+    }
+
+    input:focus {
+      border-color: #2563eb;
+      box-shadow: 0 0 0 3px #dbeafe;
+    }
+
+    .divider {
+      border: none;
+      border-top: 1px solid #f0f2f5;
+      margin: 1.4rem 0;
+    }
+
+    .optional-label {
+      font-size: 0.78rem;
+      color: #9ca3af;
+      margin-bottom: 1rem;
+      display: block;
+    }
+
+    .error {
+      background: #fef2f2;
+      border: 1px solid #fca5a5;
+      border-radius: 8px;
+      color: #b91c1c;
+      font-size: 0.85rem;
+      padding: 0.6rem 0.9rem;
+      margin-bottom: 1.2rem;
+    }
+
+    .btn-submit {
+      width: 100%;
+      margin-top: 1.4rem;
+      padding: 0.65rem 1rem;
+      background: #2563eb;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      transition: background 0.2s;
+    }
+    .btn-submit:hover { background: #1d4ed8; }
+  </style>
+</head>
+<body>
+
+<div class="card">
+  <h1>Configuration initiale</h1>
+  <p class="subtitle">Ces informations sont stockées localement et ne sont jamais envoyées sur GitHub.</p>
+
+  {% if error %}
+    <div class="error">{{ error }}</div>
+  {% endif %}
+
+  <form method="post">
+    {% csrf_token %}
+
+    <div class="form-group">
+      <label for="url">Préfixe URL OrthoAdvance</label>
+      <input type="text" id="url" name="url" placeholder="monoffice-app"
+             value="{{ request.POST.url|default:'' }}" autocomplete="off" required />
+    </div>
+
+    <hr class="divider" />
+
+    <div class="form-group">
+      <label for="login">Login <span class="hint">— stocké dans le keyring Windows</span></label>
+      <input type="email" id="login" name="login" placeholder="prenom.nom@cabinet.fr"
+             value="{{ request.POST.login|default:'' }}" autocomplete="username" required />
+    </div>
+
+    <div class="form-group">
+      <label for="password">Mot de passe <span class="hint">— stocké dans le keyring Windows</span></label>
+      <input type="password" id="password" name="password" autocomplete="current-password" required />
+    </div>
+
+    <hr class="divider" />
+
+    <span class="optional-label">Optionnel</span>
+
+    <div class="form-group">
+      <label for="webhook">Webhook Discord</label>
+      <input type="text" id="webhook" name="webhook" placeholder="https://discord.com/api/webhooks/…"
+             value="{{ request.POST.webhook|default:'' }}" autocomplete="off" />
+    </div>
+
+    <button type="submit" class="btn-submit">Enregistrer et continuer</button>
+  </form>
+</div>
+
+</body>
+</html>

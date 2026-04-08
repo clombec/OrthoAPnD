@@ -1,8 +1,14 @@
 import yaml
+import keyring
 from pathlib import Path
 
 from .models import ProsthesisRecord
+from orthoaget import PROJECT_ROOT
 from orthoaget.mainLoad import get_records
+
+import logging
+
+KEYRING_SERVICE = "orthoaget"
 
 SORTABLE_FIELDS = {
     "prosthetist",
@@ -17,6 +23,29 @@ SORTABLE_FIELDS = {
 
 CONFIG_PATH = Path(__file__).parent / "configuration.yaml"
 DEFAULT_COLOR = "#ffffff"
+ORTHOAGET_CONFIG_PATH = Path(PROJECT_ROOT) / "OrthoABase" / "config.yaml"
+
+
+# ── OrthoAGet setup ───────────────────────────────────────────────────────────
+
+def is_orthoaget_configured() -> bool:
+    if not ORTHOAGET_CONFIG_PATH.exists():
+        return False
+    login = keyring.get_password(KEYRING_SERVICE, "login")
+    pwd   = keyring.get_password(KEYRING_SERVICE, "password")
+    return bool(login and pwd)
+
+
+def setup_orthoaget(url: str, login: str, pwd: str, webhook: str = "") -> None:
+    data = {
+        "connexion": {"url": url},
+        "discord":   {"webhook": webhook},
+    }
+    ORTHOAGET_CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
+    with open(ORTHOAGET_CONFIG_PATH, "w", encoding="utf-8") as f:
+        yaml.dump(data, f, allow_unicode=True, default_flow_style=False)
+    keyring.set_password(KEYRING_SERVICE, "login",    login)
+    keyring.set_password(KEYRING_SERVICE, "password", pwd)
 
 
 # ── Color config ──────────────────────────────────────────────────────────────
@@ -87,32 +116,29 @@ def refresh_records_from_external() -> dict:
     Returns a summary dict with counts.
     """
 
-    print("Clearing existing records...")
-    ProsthesisRecord.objects.all().delete()
+    logging.debug("Start refreshing records from external source...")
 
-    external_records = get_records()  # retourne une liste de dicts
-    created = 0
-    updated = 0
+    external_records = get_records()
 
-    for data in external_records:
-        # Use patient + procedure as unique key — adapt to your needs
-        obj, is_created = ProsthesisRecord.objects.update_or_create(
+    objects = [
+        ProsthesisRecord(
             patient=data["Patient"],
             procedure=data["Acte prothésiste"],
             prosthetist=data["Prothésiste"],
             send_date=data["Date d'envoi au labo"],
             receive_date=data["Date de réception"],
-            defaults={
-                "duration":         data.get("Durée"),
-                "comments":         data.get("Commentaires", ""),
-                "appointment_date": data.get("Date du rdv"),
-                "impression_date":  data.get("PE"),
-                "url":              data.get("url", ""),
-            },
+            duration=data.get("Durée"),
+            comments=data.get("Commentaires", ""),
+            appointment_date=data.get("Date du rdv"),
+            impression_date=data.get("PE"),
+            url=data.get("url", ""),
         )
-        if is_created:
-            created += 1
-        else:
-            updated += 1
+        for data in external_records
+    ]
 
-    return {"created": created, "updated": updated, "total": len(external_records)}
+    ProsthesisRecord.objects.all().delete()
+    ProsthesisRecord.objects.bulk_create(objects)
+
+    logging.debug("Finished refreshing records from external source.")
+
+    return {"created": len(objects), "total": len(objects)}

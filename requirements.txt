@@ -3,3 +3,4 @@ django
 pandas
 beautifulsoup4
 git+https://github.com/clombec/OrthoAParse.git@main#egg=orthoaget
+keyring
