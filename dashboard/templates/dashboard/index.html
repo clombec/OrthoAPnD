@@ -12,7 +12,7 @@
 
     body {
       font-family: 'Segoe UI', system-ui, sans-serif;
-      background: #f0f2f5;
+      background: #222325;
       color: #1a1d23;
       min-height: 100vh;
       padding: 2rem 1.5rem;
@@ -31,12 +31,12 @@
       font-size: 1.6rem;
       font-weight: 700;
       letter-spacing: -0.02em;
-      color: #111;
+      color: #f8f9fb;
     }
 
     h1 .badge {
       display: inline-block;
-      background: #2563eb;
+      background: #6b92e4;
       color: #fff;
       font-size: 0.75rem;
       font-weight: 600;
@@ -48,7 +48,7 @@
 
     /* ── Filter buttons ────────────────────────────────────────── */
     .btn-filter {
-      background: #2563eb;
+      background: #6b92e4;
       color: #fff;
       border: none;
       border-radius: 8px;
@@ -64,6 +64,23 @@
     .btn-filter:hover { background: #1d4ed8; }
     .btn-filter.active { background: #16a34a; }
     .btn-filter.active:hover { background: #15803d; }
+
+    /* ── Prosthetist dropdown filter ──────────────────────────── */
+    .select-filter {
+      background: #fff;
+      border: 1.5px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 0.5rem 0.85rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      font-family: inherit;
+      color: #1a1d23;
+      cursor: pointer;
+      transition: border-color 0.15s, box-shadow 0.15s;
+      height: 100%;
+    }
+    .select-filter:focus { outline: none; border-color: #2563eb; box-shadow: 0 0 0 3px #dbeafe; }
+    .select-filter.active { border-color: #16a34a; box-shadow: 0 0 0 3px #dcfce7; color: #15803d; }
 
     /* ── Colors button ─────────────────────────────────────────── */
     .btn-colors {
@@ -292,6 +309,10 @@
     </span>
   </h1>
 
+  <select class="select-filter" id="select-prosthetist" onchange="applyProsthetistFilter()">
+    <option value="">Tous les prothésistes</option>
+  </select>
+
   <button class="btn-filter" id="btn-acts" onclick="openActsModal()">
     📋 Choix des actes
   </button>
@@ -301,11 +322,10 @@
   <button class="btn-filter" id="btn-sent" onclick="toggleFilter('send')">
     📤 Envoi aujourd'hui
   </button>
+  <button class="btn-colors" onclick="openColorsModal()">🎨 Couleurs des actes</button>
   <button class="btn-filter" id="btn-sync" onclick="syncRecords()">
     🔄 Rafraichir
   </button>
-
-  <button class="btn-colors" onclick="openColorsModal()">🎨 Couleurs des actes</button>
 </div>
 
 <div class="table-wrapper">
@@ -418,6 +438,28 @@
         .filter(v => v && v !== "—")
     )].sort();
 
+    // Populate prosthetist dropdown
+    const allProsthetists = [...new Set(
+      [...document.querySelectorAll("tbody tr")]
+        .map(row => row.children[0]?.textContent.trim())
+        .filter(v => v && v !== "—")
+    )].sort();
+    const selectEl = document.getElementById("select-prosthetist");
+    for (const p of allProsthetists) {
+      const opt = document.createElement("option");
+      opt.value = p;
+      opt.textContent = p;
+      selectEl.appendChild(opt);
+    }
+
+    // ── Prosthetist filter ───────────────────────────────────────
+
+    window.applyProsthetistFilter = function () {
+      const val = selectEl.value;
+      selectEl.classList.toggle("active", val !== "");
+      applyFilters();
+    };
+
     // ── Acts filter ─────────────────────────────────────────────
 
     window.openActsModal = function () {
@@ -474,15 +516,18 @@
     };
 
     function applyFilters() {
+      const prosthetistFilter = selectEl.value;
       document.querySelectorAll("tbody tr").forEach(row => {
         if (row.querySelector(".empty")) return;
 
-        const passReceive = !filterState.receive || row.dataset.receive === today;
-        const passSend    = !filterState.send    || row.dataset.send === today;
-        const act         = row.children[2]?.textContent.trim();
-        const passActs    = activeActs === null   || activeActs.has(act);
+        const passReceive    = !filterState.receive || row.dataset.receive === today;
+        const passSend       = !filterState.send    || row.dataset.send === today;
+        const act            = row.children[2]?.textContent.trim();
+        const passActs       = activeActs === null   || activeActs.has(act);
+        const prosthetist    = row.children[0]?.textContent.trim();
+        const passProsthetist = !prosthetistFilter  || prosthetist === prosthetistFilter;
 
-        row.style.display = (passReceive && passSend && passActs) ? "" : "none";
+        row.style.display = (passReceive && passSend && passActs && passProsthetist) ? "" : "none";
       });
     }
 
@@ -532,8 +577,8 @@
         });
         const data = await response.json();
         if (data.ok) {
-          btn.textContent = `✅ ${data.result.created} créés, ${data.result.updated} mis à jour`;
-          setTimeout(() => location.reload(), 1500);
+          btn.textContent = `✅ ${data.result.total} enregistrements chargés`;
+          setTimeout(() => location.href = "/", 1500);
         } else {
           btn.textContent = "❌ Erreur";
         }
