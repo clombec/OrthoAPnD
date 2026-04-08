@@ -17,3 +17,15 @@ class ProsthesisRecord(models.Model):
 
     def __str__(self):
         return f"{self.patient} - {self.procedure}"
+
+
+class UsersRecord(models.Model):
+    """
+    Patient identity record, never deleted — only upserted.
+    Unique key: patient_id ("Nom" field from OrthoAdvance).
+    """
+    patient_id = models.CharField(max_length=100, unique=True)  # "ID"
+    name  = models.CharField(max_length=255)                    # "Prénom Nom"
+
+    def __str__(self):
+        return f"{self.name} ({self.patient_id})"

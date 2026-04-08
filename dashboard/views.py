@@ -7,10 +7,10 @@ from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import ensure_csrf_cookie
 
 from .services import (
-    get_sorted_records,
-    save_colors,
-    sync_procedures_to_config,
-    refresh_records_from_external,
+    get_proth_sorted_records,
+    save_proth_colors,
+    sync_proth_procedures_to_config,
+    refresh_proth_records_from_external,
     is_orthoaget_configured,
     setup_orthoaget,
     SORTABLE_FIELDS,
@@ -66,10 +66,10 @@ def home(request):
     has_referer = bool(request.META.get("HTTP_REFERER"))
     is_browser_refresh = "max-age=0" in cache_control or "no-cache" in cache_control
     if not has_referer or is_browser_refresh:
-        refresh_records_from_external()
+        refresh_proth_records_from_external()
 
-    records = get_sorted_records(sort_by=sort_by, direction=direction)
-    colors = sync_procedures_to_config()
+    records = get_proth_sorted_records(sort_by=sort_by, direction=direction)
+    colors = sync_proth_procedures_to_config()
 
     # Pre-compute sort URLs for each column header
     columns_with_urls = []
@@ -97,7 +97,7 @@ def save_colors_view(request):
         colors = data.get("colors", {})
         if not isinstance(colors, dict):
             return JsonResponse({"error": "Invalid payload"}, status=400)
-        save_colors(colors)
+        save_proth_colors(colors)
         return JsonResponse({"ok": True})
     except Exception as exc:  # noqa: BLE001
         return JsonResponse({"error": str(exc)}, status=500)
@@ -106,7 +106,7 @@ def save_colors_view(request):
 def sync_records_view(request):
     """Trigger a manual sync from the external project."""
     try:
-        result = refresh_records_from_external()
+        result = refresh_proth_records_from_external()
         return JsonResponse({"ok": True, "result": result})
     except Exception as exc:
         return JsonResponse({"error": str(exc)}, status=500)    
