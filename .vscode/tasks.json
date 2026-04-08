@@ -4,7 +4,7 @@
         {
             "label": "Django: Run Server",
             "type": "shell",
-            "command": ".venvwin\\Scripts\\python manage.py runserver",
+            "command": ".venv\\Scripts\\python manage.py runserver",
             "group": "test",
             "presentation": {
                 "reveal": "always",
@@ -15,14 +15,14 @@
         {
             "label": "Django: Make Migrations",
             "type": "shell",
-            "command": ".venvwin\\Scripts\\python manage.py makemigrations",
+            "command": ".venv\\Scripts\\python manage.py makemigrations",
             "group": "build",
             "problemMatcher": []
         },
         {
             "label": "Django: Migrate",
             "type": "shell",
-            "command": ".venvwin\\Scripts\\python manage.py migrate",
+            "command": ".venv\\Scripts\\python manage.py migrate",
             "group": "build",
             "dependsOn": ["Django: Make Migrations"],
             "problemMatcher": []
@@ -30,12 +30,22 @@
         {
             "label": "Django: Import Data",
             "type": "shell",
-            "command": ".venvwin\\Scripts\\python import_data.py",
+            "command": ".venv\\Scripts\\python import_data.py",
             "group": "none",
             "presentation": {
                 "reveal": "always",
                 "panel": "dedicated"
             }
-        }
+        },
+        {
+            "label": "orthoaget: force reinstall",
+            "type": "shell",
+            "command": ".venv/Scripts/pip install --force-reinstall \"git+https://github.com/clombec/OrthoAParse.git@main#egg=orthoaget\"",
+            "group": "none",
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            }
+        }        
     ]
 }
