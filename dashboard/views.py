@@ -1,4 +1,5 @@
 import json
+import threading
 
 from django.http import JsonResponse
 from django.shortcuts import render, redirect
@@ -6,6 +7,7 @@ from django.views.decorators.http import require_POST
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import ensure_csrf_cookie
 
+from . import loading_state
 from .services import (
     get_proth_sorted_records,
     save_proth_colors,
@@ -27,6 +29,40 @@ COLUMNS = [
     ("duration",         "Durée (m)"),
     ("appointment_date", "RDV"),
 ]
+
+# ── Background refresh ────────────────────────────────────────────────────────
+
+_refresh_lock = threading.Lock()
+_refresh_thread: threading.Thread | None = None
+
+
+def _run_refresh() -> None:
+    global _refresh_thread
+    try:
+        def progress(text: str, percent: int) -> None:
+            loading_state.update(True, text, percent)
+
+        refresh_proth_records_from_external(progress_cb=progress)
+        loading_state.update(False, "Chargement terminé", 100)
+    except Exception as exc:
+        loading_state.update(False, "", 0, error=str(exc))
+    finally:
+        with _refresh_lock:
+            _refresh_thread = None
+
+
+def _start_refresh_if_idle() -> None:
+    """Launch the background refresh thread if none is already running."""
+    global _refresh_thread
+    with _refresh_lock:
+        if _refresh_thread is not None:
+            return
+        loading_state.update(True, "Démarrage du chargement…", 0)
+        _refresh_thread = threading.Thread(target=_run_refresh, daemon=True)
+        _refresh_thread.start()
+
+
+# ── Views ─────────────────────────────────────────────────────────────────────
 
 @ensure_csrf_cookie
 def setup_view(request):
@@ -53,7 +89,7 @@ def setup_view(request):
 def home(request):
     if not is_orthoaget_configured():
         return redirect("setup")
-    """Display the sortable prosthesis records table."""
+
     sort_by = request.GET.get("sort", "patient")
     direction = request.GET.get("dir", "asc")
 
@@ -66,12 +102,14 @@ def home(request):
     has_referer = bool(request.META.get("HTTP_REFERER"))
     is_browser_refresh = "max-age=0" in cache_control or "no-cache" in cache_control
     if not has_referer or is_browser_refresh:
-        refresh_proth_records_from_external()
+        _start_refresh_if_idle()
+
+    state = loading_state.get()
+    is_loading = state["loading"]
 
     records = get_proth_sorted_records(sort_by=sort_by, direction=direction)
     colors = sync_proth_procedures_to_config()
 
-    # Pre-compute sort URLs for each column header
     columns_with_urls = []
     for field, label in COLUMNS:
         next_dir = "desc" if (sort_by == field and direction == "asc") else "asc"
@@ -85,8 +123,16 @@ def home(request):
         "direction": direction,
         "colors": colors,
         "colors_json": json.dumps(colors),
+        "is_loading": is_loading,
+        "loading_text": state["text"],
+        "loading_percent": state["percent"],
     }
     return render(request, "dashboard/index.html", context)
+
+
+def loading_status_view(request):
+    """Return the current background-refresh state as JSON."""
+    return JsonResponse(loading_state.get())
 
 
 @require_POST
@@ -106,7 +152,7 @@ def save_colors_view(request):
 def sync_records_view(request):
     """Trigger a manual sync from the external project."""
     try:
-        result = refresh_proth_records_from_external()
-        return JsonResponse({"ok": True, "result": result})
+        _start_refresh_if_idle()
+        return JsonResponse({"ok": True, "started": True})
     except Exception as exc:
-        return JsonResponse({"error": str(exc)}, status=500)    
+        return JsonResponse({"error": str(exc)}, status=500)

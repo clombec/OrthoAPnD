@@ -6,7 +6,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Suivi prothèses</title>
+  <title>Actes prothésistes</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -81,6 +81,69 @@
     }
     .select-filter:focus { outline: none; border-color: #2563eb; box-shadow: 0 0 0 3px #dbeafe; }
     .select-filter.active { border-color: #16a34a; box-shadow: 0 0 0 3px #dcfce7; color: #15803d; }
+
+    /* ── Loading overlay ───────────────────────────────────────── */
+    #loading-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(20, 22, 28, 0.72);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(2px);
+    }
+    #loading-overlay.visible { display: flex; }
+
+    .loading-card {
+      background: #fff;
+      border-radius: 16px;
+      padding: 2rem 2.5rem;
+      width: 380px;
+      max-width: 92vw;
+      box-shadow: 0 24px 64px rgba(0,0,0,0.28);
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .loading-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #1a1d23;
+    }
+
+    .loading-text {
+      font-size: 0.85rem;
+      color: #4b5563;
+      min-height: 1.2em;
+    }
+
+    .progress-track {
+      background: #e5e7eb;
+      border-radius: 999px;
+      height: 8px;
+      overflow: hidden;
+    }
+    .progress-bar {
+      height: 100%;
+      border-radius: 999px;
+      background: #2563eb;
+      width: 0%;
+      transition: width 0.35s ease;
+    }
+
+    .loading-percent {
+      font-size: 0.78rem;
+      color: #9ca3af;
+      text-align: right;
+    }
+
+    .loading-error {
+      font-size: 0.82rem;
+      color: #dc2626;
+      display: none;
+    }
 
     /* ── Colors button ─────────────────────────────────────────── */
     .btn-colors {
@@ -303,7 +366,7 @@
 
 <div class="page-header">
   <h1>
-    Suivi prothèses
+    Actes prothésistes
     <span class="badge">
       {{ records|length }} enregistrement{{ records|length|pluralize }}
     </span>
@@ -420,6 +483,19 @@
       <button class="btn-cancel" onclick="closeActsModal()">Annuler</button>
       <button class="btn-ok" onclick="applyActsFilter()">OK</button>
     </div>
+  </div>
+</div>
+
+<!-- Loading overlay -->
+<div id="loading-overlay" {% if is_loading %}class="visible"{% endif %}>
+  <div class="loading-card">
+    <div class="loading-title">Chargement des données…</div>
+    <div class="loading-text" id="loading-text">{{ loading_text }}</div>
+    <div class="progress-track">
+      <div class="progress-bar" id="progress-bar" style="width:{{ loading_percent }}%"></div>
+    </div>
+    <div class="loading-percent" id="loading-percent">{{ loading_percent }}%</div>
+    <div class="loading-error" id="loading-error"></div>
   </div>
 </div>
 
@@ -565,6 +641,56 @@
       document.getElementById("colorModal").classList.remove("open");
     };
 
+    // ── Loading overlay polling ──────────────────────────────────────
+    const overlay    = document.getElementById("loading-overlay");
+    const progressBar = document.getElementById("progress-bar");
+    const loadingText = document.getElementById("loading-text");
+    const loadingPct  = document.getElementById("loading-percent");
+    const loadingErr  = document.getElementById("loading-error");
+
+    let pollingTimer = null;
+
+    function updateOverlay(state) {
+      progressBar.style.width = state.percent + "%";
+      loadingText.textContent = state.text;
+      loadingPct.textContent  = state.percent + "%";
+
+      if (state.error) {
+        loadingErr.textContent = "Erreur : " + state.error;
+        loadingErr.style.display = "block";
+      } else {
+        loadingErr.style.display = "none";
+      }
+    }
+
+    function startPolling() {
+      if (pollingTimer) return;
+      pollingTimer = setInterval(async () => {
+        try {
+          const resp  = await fetch("loading-status/");
+          const state = await resp.json();
+          updateOverlay(state);
+
+          if (!state.loading) {
+            clearInterval(pollingTimer);
+            pollingTimer = null;
+            if (!state.error) {
+              // Brief pause so the progress bar visually reaches 100 %
+              setTimeout(() => location.href = "/", 600);
+            }
+            overlay.classList.remove("visible");
+          }
+        } catch {
+          // Network hiccup — keep polling
+        }
+      }, 400); // ~2.5 Hz
+    }
+
+    // If the page was served while loading, start polling immediately
+    if (overlay.classList.contains("visible")) {
+      startPolling();
+    }
+
     window.syncRecords = async function () {
       const btn = document.getElementById("btn-sync");
       btn.textContent = "⏳ Sync…";
@@ -577,14 +703,21 @@
         });
         const data = await response.json();
         if (data.ok) {
-          btn.textContent = `✅ ${data.result.total} enregistrements chargés`;
-          setTimeout(() => location.href = "/", 1500);
+          // Show overlay and start polling
+          loadingText.textContent = "Démarrage du chargement…";
+          progressBar.style.width = "0%";
+          loadingPct.textContent  = "0%";
+          loadingErr.style.display = "none";
+          overlay.classList.add("visible");
+          startPolling();
+          btn.textContent = "🔄 Rafraichir";
+          btn.disabled = false;
         } else {
           btn.textContent = "❌ Erreur";
+          btn.disabled = false;
         }
       } catch {
         btn.textContent = "❌ Erreur réseau";
-      } finally {
         btn.disabled = false;
       }
     };

@@ -6,4 +6,5 @@ urlpatterns = [
     path("setup/", views.setup_view, name="setup"),
     path("save-colors/", views.save_colors_view, name="save_colors"),
     path("sync/", views.sync_records_view, name="sync_records"),
+    path("loading-status/", views.loading_status_view, name="loading_status"),
 ]

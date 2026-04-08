@@ -82,15 +82,21 @@ def get_sorted_records(sort_by: str = "patient", direction: str = "asc"):
     order_field = sort_by if direction == "asc" else f"-{sort_by}"
     return ProsthesisRecord.objects.order_by(order_field)
 
-def refresh_records_from_external() -> dict:
+def refresh_records_from_external(progress_cb=None) -> dict:
     """
     Fetch records from the external project and insert them in the DB.
     The DB is fully refreshed --> existing records are deleted before inserting the new ones.
     For each patient, the URL is built by replacing <ID> with the patient_id from UsersRecord.
     If a patient is not found, UsersRecord is refreshed once. If still not found, url is set
     to an error message.
+
+    progress_cb: optional callable(text: str, percent: int) called at key stages.
     Returns a summary dict with counts.
     """
+    def _progress(text: str, percent: int) -> None:
+        if progress_cb:
+            progress_cb(text, percent)
+
     def build_users_lookup() -> dict:
         """Returns {  "prénom nom": patient_id  } (lowercase keys)."""
         return {
@@ -99,10 +105,13 @@ def refresh_records_from_external() -> dict:
         }
 
     logging.debug("Start refreshing records from external source...")
+    _progress("Connexion à OrthoAdvance…", 5)
 
     with OrthoASession() as session:
+        _progress("Téléchargement des actes prothésistes…", 10)
         external_records = session.get_proth_records()
 
+        _progress("Vérification des patients…", 20)
         users_lookup = build_users_lookup()
         users_refreshed = False
 
@@ -113,7 +122,8 @@ def refresh_records_from_external() -> dict:
 
             if patient_id is None:
                 if not users_refreshed:
-                    refresh_users_records_from_external(session=session)
+                    _progress("Mise à jour de la liste des patients…", 20)
+                    refresh_users_records_from_external(session=session, progress_cb=progress_cb)
                     users_refreshed = True
                     users_lookup = build_users_lookup()
                     patient_id = users_lookup.get(patient_name)
@@ -138,9 +148,11 @@ def refresh_records_from_external() -> dict:
                 url=url,
             ))
 
+        _progress("Enregistrement en base de données…", 90)
         ProsthesisRecord.objects.all().delete()
         ProsthesisRecord.objects.bulk_create(objects)
 
     logging.debug("Finished refreshing records from external source.")
+    _progress("Chargement terminé", 100)
 
     return {"created": len(objects), "total": len(objects)}

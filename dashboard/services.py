@@ -47,5 +47,5 @@ def save_proth_colors(colors: dict) -> None:
 def get_proth_sorted_records(sort_by: str = "patient", direction: str = "asc"):
     return proth_services.get_sorted_records(sort_by, direction)
 
-def refresh_proth_records_from_external() -> dict:
-    return proth_services.refresh_records_from_external()
+def refresh_proth_records_from_external(progress_cb=None) -> dict:
+    return proth_services.refresh_records_from_external(progress_cb=progress_cb)
