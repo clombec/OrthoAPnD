@@ -357,6 +357,24 @@
       cursor: pointer;
       accent-color: #2563eb;
     }
+    .btn-back {
+      background: none;
+      border: 1.5px solid #3a3d44;
+      border-radius: 8px;
+      padding: 0.5rem 0.85rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      font-family: inherit;
+      color: #9ca3af;
+      cursor: pointer;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      transition: border-color 0.2s, color 0.2s;
+      flex-wrap: wrap;
+      width: fit-content;
+    }
+    .btn-back:hover { border-color: #6b92e4; color: #f8f9fb; }
   </style>
 </head>
 <body>
@@ -364,7 +382,10 @@
 <!-- Force Django to set the CSRF cookie -->
 <form style="display:none">{% csrf_token %}</form>
 
-<div class="page-header">
+<div>
+  <a href="{% url 'landing' %}" class="btn-back">← Accueil</a>
+</div>
+<div class="page-header">  
   <h1>
     Actes prothésistes
     <span class="badge">
@@ -676,7 +697,7 @@
             pollingTimer = null;
             if (!state.error) {
               // Brief pause so the progress bar visually reaches 100 %
-              setTimeout(() => location.href = "/", 600);
+              setTimeout(() => location.href = "/proth", 600);
             }
             overlay.classList.remove("visible");
           }
@@ -738,7 +759,7 @@
 
         if (response.ok) {
           closeColorsModal();
-          location.href = "/";
+          location.href = "/proth/";
         } else {
           status.textContent = "Erreur lors de la sauvegarde.";
         }

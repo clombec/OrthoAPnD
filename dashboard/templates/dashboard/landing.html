@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cabinet Dr Beclin</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #222325;
+      color: #f8f9fb;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem 1.5rem;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 3rem;
+    }
+
+    header h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: #f8f9fb;
+    }
+
+    header p {
+      margin-top: 0.5rem;
+      color: #9ca3af;
+      font-size: 0.95rem;
+    }
+
+    .activities {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 1.25rem;
+      width: 100%;
+      max-width: 900px;
+    }
+
+    .card {
+      background: #2d2f33;
+      border: 1.5px solid #3a3d44;
+      border-radius: 14px;
+      padding: 1.75rem 1.5rem;
+      text-decoration: none;
+      color: inherit;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.75rem;
+      transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s;
+      cursor: pointer;
+    }
+
+    .card:hover {
+      border-color: #6b92e4;
+      box-shadow: 0 0 0 3px rgba(107, 146, 228, 0.15);
+      transform: translateY(-2px);
+    }
+
+    .card-icon {
+      font-size: 2rem;
+      line-height: 1;
+    }
+
+    .card-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #f8f9fb;
+    }
+
+    .card-description {
+      font-size: 0.82rem;
+      color: #9ca3af;
+      line-height: 1.45;
+    }
+
+    .card-arrow {
+      margin-top: auto;
+      align-self: flex-end;
+      color: #6b92e4;
+      font-size: 1.1rem;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>Cabinet Dr Beclin</h1>
+    <p>Choisissez une activité</p>
+  </header>
+
+  <section class="activities">
+
+    <a href="{% url 'home' %}" class="card">
+      <span class="card-icon">🦷</span>
+      <span class="card-title">Actes Prothésistes</span>
+      <span class="card-description">Suivi des actes prothésistes, envois et réceptions.</span>
+      <span class="card-arrow">→</span>
+    </a>
+
+    {# Pour ajouter une nouvelle activité, dupliquer le bloc <a class="card"> ci-dessus #}
+
+  </section>
+
+</body>
+</html>

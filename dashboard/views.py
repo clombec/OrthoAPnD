@@ -64,6 +64,13 @@ def _start_refresh_if_idle() -> None:
 
 # ── Views ─────────────────────────────────────────────────────────────────────
 
+def landing(request):
+    if not is_orthoaget_configured():
+        return redirect("setup")
+
+    return render(request, "dashboard/landing.html")
+
+
 @ensure_csrf_cookie
 def setup_view(request):
     if is_orthoaget_configured():
@@ -87,9 +94,6 @@ def setup_view(request):
 
 @ensure_csrf_cookie
 def home(request):
-    if not is_orthoaget_configured():
-        return redirect("setup")
-
     sort_by = request.GET.get("sort", "patient")
     direction = request.GET.get("dir", "asc")
 
