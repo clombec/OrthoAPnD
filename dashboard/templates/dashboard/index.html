@@ -14,8 +14,17 @@
       font-family: 'Segoe UI', system-ui, sans-serif;
       background: #222325;
       color: #1a1d23;
-      min-height: 100vh;
-      padding: 2rem 1.5rem;
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Sticky top zone ──────────────────────────────────────── */
+    .sticky-header {
+      flex-shrink: 0;
+      background: #222325;
+      padding: 1.5rem 1.5rem 0;
     }
 
     /* ── Page header ───────────────────────────────────────────── */
@@ -23,7 +32,8 @@
       display: flex;
       align-items: center;
       gap: 0.75rem;
-      margin-bottom: 1.5rem;
+      margin-top: 0.75rem;
+      margin-bottom: 1rem;
       flex-wrap: wrap;
     }
 
@@ -167,10 +177,13 @@
 
     /* ── Table ─────────────────────────────────────────────────── */
     .table-wrapper {
+      flex: 1;
       overflow-x: auto;
+      overflow-y: auto;
       background: #fff;
       border-radius: 12px;
       box-shadow: 0 1px 3px rgba(0,0,0,.08), 0 4px 16px rgba(0,0,0,.05);
+      margin: 0 1.5rem 1.5rem;
     }
 
     table {
@@ -189,6 +202,13 @@
     thead {
       background: #f8f9fb;
       border-bottom: 2px solid #e5e7eb;
+    }
+
+    thead th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      background: #f8f9fb;
     }
 
     th {
@@ -382,10 +402,11 @@
 <!-- Force Django to set the CSRF cookie -->
 <form style="display:none">{% csrf_token %}</form>
 
+<div class="sticky-header">
 <div>
   <a href="{% url 'landing' %}" class="btn-back">← Accueil</a>
 </div>
-<div class="page-header">  
+<div class="page-header">
   <h1>
     Actes prothésistes
     <span class="badge">
@@ -400,17 +421,18 @@
   <button class="btn-filter" id="btn-acts" onclick="openActsModal()">
     📋 Choix des actes
   </button>
-  <button class="btn-filter" id="btn-received" onclick="toggleFilter('receive')">
-    📥 Réception aujourd'hui
-  </button>
   <button class="btn-filter" id="btn-sent" onclick="toggleFilter('send')">
     📤 Envoi aujourd'hui
+  </button>
+  <button class="btn-filter" id="btn-received" onclick="toggleFilter('receive')">
+    📥 Réception aujourd'hui
   </button>
   <button class="btn-filter" id="btn-sync" onclick="syncRecords()">
     🔄 Rafraichir
   </button>
   <button class="btn-colors" onclick="openColorsModal()">🎨 Couleurs des actes</button>
 </div>
+</div><!-- /.sticky-header -->
 
 <div class="table-wrapper">
   <table>

@@ -102,10 +102,12 @@ def home(request):
     if direction not in ("asc", "desc"):
         direction = "asc"
 
+    from urllib.parse import urlparse
     cache_control = request.META.get("HTTP_CACHE_CONTROL", "")
-    has_referer = bool(request.META.get("HTTP_REFERER"))
+    referer = request.META.get("HTTP_REFERER", "")
     is_browser_refresh = "max-age=0" in cache_control or "no-cache" in cache_control
-    if not has_referer or is_browser_refresh:
+    from_landing = urlparse(referer).path.rstrip("/") == ""  # referer path = "/"
+    if not referer or is_browser_refresh or from_landing:
         _start_refresh_if_idle()
 
     state = loading_state.get()
