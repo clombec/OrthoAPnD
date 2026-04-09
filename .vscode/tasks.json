@@ -24,7 +24,9 @@
             "type": "shell",
             "command": ".venv\\Scripts\\python manage.py migrate",
             "group": "build",
-            "dependsOn": ["Django: Make Migrations"],
+            "dependsOn": [
+                "Django: Make Migrations"
+            ],
             "problemMatcher": []
         },
         {
@@ -40,12 +42,24 @@
         {
             "label": "orthoaget: force reinstall",
             "type": "shell",
-            "command": ".venv/Scripts/pip install --force-reinstall \"git+https://github.com/clombec/OrthoAParse.git@main#egg=orthoaget\"",
-            "group": "none",
+            "windows": {
+                "command": ".venv\\Scripts\\pip install --force-reinstall \"git+https://github.com/clombec/OrthoAParse.git@main#egg=orthoaget\""
+            },
+            "osx": {
+                "command": ".venv/bin/pip install --force-reinstall 'git+https://github.com/clombec/OrthoAParse.git@main#egg=orthoaget'"
+            },
+            "linux": {
+                "command": ".venv/bin/pip install --force-reinstall 'git+https://github.com/clombec/OrthoAParse.git@main#egg=orthoaget'"
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
             "presentation": {
                 "reveal": "always",
                 "panel": "dedicated"
-            }
-        }        
+            },
+            "problemMatcher": []
+        }
     ]
 }
