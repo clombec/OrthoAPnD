@@ -4,6 +4,7 @@ from pathlib import Path
 
 from orthoaget import PROJECT_ROOT
 import dashboard.app_services.proth_services as proth_services
+import dashboard.app_services.income_services as income_services
 
 SORTABLE_FIELDS = proth_services.SORTABLE_FIELDS
 
@@ -34,6 +35,21 @@ def setup_orthoaget(url: str, login: str, pwd: str, webhook: str = "") -> None:
     keyring.set_password(KEYRING_SERVICE, "password", pwd)
 
 
+# ── Intra PIN ────────────────────────────────────────────────────────────────
+
+DEFAULT_INTRA_PIN = "1234"
+
+def get_intra_pin() -> str:
+    """Return the intra PIN from configuration.yaml, or the default."""
+    if CONFIG_PATH.exists():
+        with open(CONFIG_PATH, encoding="utf-8") as f:
+            data = yaml.safe_load(f) or {}
+        pin = data.get("intra", {}).get("pin")
+        if pin:
+            return str(pin)
+    return DEFAULT_INTRA_PIN
+
+
 # ── Proth Color config ──────────────────────────────────────────────────────────────
 
 def sync_proth_procedures_to_config() -> dict:
@@ -49,3 +65,15 @@ def get_proth_sorted_records(sort_by: str = "patient", direction: str = "asc"):
 
 def refresh_proth_records_from_external(progress_cb=None) -> dict:
     return proth_services.refresh_records_from_external(progress_cb=progress_cb)
+
+
+# ── Income (recettes) ─────────────────────────────────────────────────────────
+
+def refresh_income_from_external(progress_cb=None) -> dict:
+    return income_services.refresh_income_from_external(progress_cb=progress_cb)
+
+def get_income_by_month(year: int, month: int) -> list[dict]:
+    return income_services.get_income_by_month(year=year, month=month)
+
+def get_available_month_range():
+    return income_services.get_available_month_range()

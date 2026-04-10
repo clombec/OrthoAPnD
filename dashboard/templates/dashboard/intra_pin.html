@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Accès Intranet</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #222325;
+      color: #f8f9fb;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .card {
+      background: #2d2f33;
+      border: 1.5px solid #3a3d44;
+      border-radius: 16px;
+      padding: 2.5rem 2rem;
+      width: 320px;
+      max-width: 92vw;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1.5rem;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+    }
+
+    .lock-icon {
+      font-size: 2.5rem;
+      line-height: 1;
+    }
+
+    h1 {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: #f8f9fb;
+      text-align: center;
+    }
+
+    /* PIN display dots */
+    .pin-dots {
+      display: flex;
+      gap: 0.75rem;
+    }
+
+    .pin-dot {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      border: 2px solid #6b7280;
+      background: transparent;
+      transition: background 0.15s, border-color 0.15s;
+    }
+
+    .pin-dot.filled {
+      background: #6b92e4;
+      border-color: #6b92e4;
+    }
+
+    /* Numpad */
+    .numpad {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.6rem;
+      width: 100%;
+    }
+
+    .numpad button {
+      background: #3a3d44;
+      border: 1.5px solid #4a4d56;
+      border-radius: 10px;
+      color: #f8f9fb;
+      font-size: 1.3rem;
+      font-weight: 600;
+      font-family: inherit;
+      padding: 0.9rem 0;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s, transform 0.1s;
+      user-select: none;
+    }
+
+    .numpad button:hover {
+      background: #4a4d56;
+      border-color: #6b92e4;
+    }
+
+    .numpad button:active {
+      transform: scale(0.94);
+      background: #2d3a5a;
+    }
+
+    .numpad button.btn-clear {
+      font-size: 0.95rem;
+      color: #9ca3af;
+    }
+
+    .numpad button.btn-zero {
+      grid-column: 2;
+    }
+
+    .numpad button.btn-submit {
+      background: #2563eb;
+      border-color: #2563eb;
+      font-size: 1.1rem;
+    }
+
+    .numpad button.btn-submit:hover { background: #1d4ed8; }
+
+    .error {
+      background: rgba(220, 38, 38, 0.15);
+      border: 1px solid rgba(220, 38, 38, 0.4);
+      border-radius: 8px;
+      color: #fca5a5;
+      font-size: 0.82rem;
+      padding: 0.5rem 0.9rem;
+      text-align: center;
+      width: 100%;
+    }
+
+    form { display: none; }
+  </style>
+</head>
+<body>
+
+<div class="card">
+  <span class="lock-icon">🔒</span>
+  <h1>Accès Intranet</h1>
+
+  <div class="pin-dots" id="pin-dots">
+    <div class="pin-dot" id="d0"></div>
+    <div class="pin-dot" id="d1"></div>
+    <div class="pin-dot" id="d2"></div>
+    <div class="pin-dot" id="d3"></div>
+  </div>
+
+  {% if error %}
+    <div class="error">{{ error }}</div>
+  {% endif %}
+
+  <div class="numpad">
+    <button onclick="appendDigit('1')">1</button>
+    <button onclick="appendDigit('2')">2</button>
+    <button onclick="appendDigit('3')">3</button>
+    <button onclick="appendDigit('4')">4</button>
+    <button onclick="appendDigit('5')">5</button>
+    <button onclick="appendDigit('6')">6</button>
+    <button onclick="appendDigit('7')">7</button>
+    <button onclick="appendDigit('8')">8</button>
+    <button onclick="appendDigit('9')">9</button>
+    <button class="btn-clear" onclick="clearPin()">⌫</button>
+    <button class="btn-zero" onclick="appendDigit('0')">0</button>
+    <button class="btn-submit" onclick="submitPin()">→</button>
+  </div>
+</div>
+
+<!-- Hidden form for actual submission -->
+<form id="pin-form" method="post" action="">
+  {% csrf_token %}
+  <input type="hidden" id="pin-input" name="pin" />
+</form>
+
+<script>
+  let pin = "";
+  const MAX = 4;
+
+  function updateDots() {
+    for (let i = 0; i < MAX; i++) {
+      document.getElementById("d" + i).classList.toggle("filled", i < pin.length);
+    }
+  }
+
+  function appendDigit(d) {
+    if (pin.length >= MAX) return;
+    pin += d;
+    updateDots();
+    if (pin.length === MAX) submitPin();
+  }
+
+  function clearPin() {
+    pin = pin.slice(0, -1);
+    updateDots();
+  }
+
+  function submitPin() {
+    if (pin.length === 0) return;
+    document.getElementById("pin-input").value = pin;
+    document.getElementById("pin-form").submit();
+  }
+
+  // Keyboard support
+  document.addEventListener("keydown", (e) => {
+    if (e.key >= "0" && e.key <= "9") appendDigit(e.key);
+    else if (e.key === "Backspace") clearPin();
+    else if (e.key === "Enter") submitPin();
+  });
+</script>
+
+</body>
+</html>

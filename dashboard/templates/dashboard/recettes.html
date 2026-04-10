@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Recettes — Intranet</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #222325;
+      color: #f8f9fb;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      padding: 1.5rem;
+      gap: 1.5rem;
+    }
+
+    /* ── Top bar ─────────────────────────────────────────────────── */
+    .top-bar {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    .btn-back {
+      background: none;
+      border: 1.5px solid #3a3d44;
+      border-radius: 8px;
+      padding: 0.5rem 0.85rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      font-family: inherit;
+      color: #9ca3af;
+      cursor: pointer;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      transition: border-color 0.2s, color 0.2s;
+    }
+    .btn-back:hover { border-color: #6b92e4; color: #f8f9fb; }
+
+    /* ── Month navigation ────────────────────────────────────────── */
+    .month-nav {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .btn-month {
+      background: none;
+      border: 1.5px solid #3a3d44;
+      border-radius: 8px;
+      padding: 0.45rem 0.75rem;
+      font-size: 1rem;
+      font-family: inherit;
+      color: #f8f9fb;
+      cursor: pointer;
+      line-height: 1;
+      transition: border-color 0.2s, color 0.2s;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+    }
+    .btn-month:hover:not(.disabled) { border-color: #6b92e4; color: #6b92e4; }
+    .btn-month.disabled {
+      color: #4a4d56;
+      border-color: #2d2f33;
+      cursor: default;
+      pointer-events: none;
+    }
+
+    .month-label {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: #f8f9fb;
+      min-width: 180px;
+      text-align: center;
+      letter-spacing: -0.01em;
+    }
+
+    /* ── Refresh button ──────────────────────────────────────────── */
+    .btn-refresh {
+      margin-left: auto;
+      background: #2563eb;
+      border: none;
+      border-radius: 8px;
+      padding: 0.5rem 1.1rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      font-family: inherit;
+      color: #fff;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      transition: background 0.2s;
+    }
+    .btn-refresh:hover { background: #1d4ed8; }
+    .btn-refresh:disabled { background: #4a4d56; cursor: not-allowed; }
+
+    /* ── Chart card ──────────────────────────────────────────────── */
+    .chart-card {
+      background: #2d2f33;
+      border: 1.5px solid #3a3d44;
+      border-radius: 14px;
+      padding: 1.5rem;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      min-height: 0;
+    }
+
+    .chart-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .chart-title {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: #d1d5db;
+    }
+
+    .chart-total {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #6b92e4;
+    }
+
+    .chart-total-label {
+      font-size: 0.75rem;
+      color: #9ca3af;
+      margin-left: 0.3rem;
+    }
+
+    .chart-wrapper {
+      flex: 1;
+      position: relative;
+      min-height: 260px;
+    }
+
+    /* ── Status message ──────────────────────────────────────────── */
+    #status-msg {
+      font-size: 0.82rem;
+      color: #9ca3af;
+      text-align: center;
+      min-height: 1.2em;
+    }
+    #status-msg.error { color: #fca5a5; }
+
+    /* ── Loading overlay ─────────────────────────────────────────── */
+    #loading-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(20, 22, 28, 0.72);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(2px);
+    }
+    #loading-overlay.visible { display: flex; }
+
+    .loading-card {
+      background: #fff;
+      border-radius: 16px;
+      padding: 2rem 2.5rem;
+      width: 380px;
+      max-width: 92vw;
+      box-shadow: 0 24px 64px rgba(0,0,0,0.28);
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+    .loading-title  { font-size: 1rem; font-weight: 700; color: #1a1d23; }
+    .loading-text   { font-size: 0.85rem; color: #4b5563; min-height: 1.2em; }
+    .progress-track { background: #e5e7eb; border-radius: 999px; height: 8px; overflow: hidden; }
+    .progress-bar   { height: 100%; border-radius: 999px; background: #2563eb; width: 0%; transition: width 0.35s ease; }
+    .loading-percent { font-size: 0.78rem; color: #9ca3af; text-align: right; }
+    .loading-error  { font-size: 0.82rem; color: #dc2626; display: none; }
+  </style>
+</head>
+<body>
+
+  <div class="top-bar">
+    <a href="{% url 'intra_landing' %}" class="btn-back">← Intranet</a>
+
+    <div class="month-nav">
+      {% if has_prev %}
+        <a href="?year={{ prev_year }}&month={{ prev_month }}" class="btn-month">‹</a>
+      {% else %}
+        <span class="btn-month disabled">‹</span>
+      {% endif %}
+
+      <span class="month-label">{{ month_name }} {{ year }}</span>
+
+      {% if has_next %}
+        <a href="?year={{ next_year }}&month={{ next_month }}" class="btn-month">›</a>
+      {% else %}
+        <span class="btn-month disabled">›</span>
+      {% endif %}
+    </div>
+
+    <button class="btn-refresh" id="btn-refresh" onclick="doRefresh()">
+      🔄 Rafraichir
+    </button>
+  </div>
+
+  <div class="chart-card">
+    <div class="chart-meta">
+      <span class="chart-title">Encaissements par jour</span>
+      <span>
+        <span class="chart-total" id="chart-total">—</span>
+        <span class="chart-total-label">€ total</span>
+      </span>
+    </div>
+    <div class="chart-wrapper">
+      <canvas id="income-chart"></canvas>
+    </div>
+    <div id="status-msg"></div>
+  </div>
+
+  <!-- Loading overlay -->
+  <div id="loading-overlay">
+    <div class="loading-card">
+      <div class="loading-title">Chargement des recettes…</div>
+      <div class="loading-text" id="loading-text"></div>
+      <div class="progress-track">
+        <div class="progress-bar" id="progress-bar"></div>
+      </div>
+      <div class="loading-percent" id="loading-percent">0%</div>
+      <div class="loading-error" id="loading-error"></div>
+    </div>
+  </div>
+
+  <!-- Hidden CSRF -->
+  <form style="display:none">{% csrf_token %}</form>
+
+<script>
+  const initialData = {{ chart_data_json|safe }};
+  const currentYear  = {{ year }};
+  const currentMonth = {{ month }};
+
+  // Day-of-week abbreviations (fr, Monday = 0)
+  const DAY_ABBR = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
+
+  function dayAbbr(dateStr) {
+    const [y, m, d] = dateStr.split("-").map(Number);
+    const dow = new Date(y, m - 1, d).getDay(); // 0=Sun
+    const adjusted = (dow + 6) % 7;             // 0=Mon
+    return DAY_ABBR[adjusted];
+  }
+
+  // ── Chart setup ────────────────────────────────────────────────
+  const ctx = document.getElementById("income-chart").getContext("2d");
+
+  function buildDatasets(data) {
+    return {
+      labels: data.map(d => {
+        const [, , day] = d.date.split("-");
+        return [day, dayAbbr(d.date)];   // two-line label
+      }),
+      datasets: [{
+        label: "Recettes (€)",
+        data: data.map(d => d.total),
+        backgroundColor: "rgba(107, 146, 228, 0.55)",
+        borderColor: "#6b92e4",
+        borderWidth: 1.5,
+        borderRadius: 4,
+        hoverBackgroundColor: "rgba(107, 146, 228, 0.85)",
+      }]
+    };
+  }
+
+  const chart = new Chart(ctx, {
+    type: "bar",
+    data: buildDatasets(initialData),
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            title: items => {
+              const d = initialData[items[0].dataIndex];
+              const [y, m, day] = d.date.split("-");
+              return `${dayAbbr(d.date)} ${day}/${m}/${y}`;
+            },
+            label: ctx => `${ctx.parsed.y.toFixed(2)} €`
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { color: "rgba(255,255,255,0.06)" },
+          ticks: {
+            color: "#9ca3af",
+            font: { size: 11 },
+            maxRotation: 0,
+          }
+        },
+        y: {
+          grid: { color: "rgba(255,255,255,0.06)" },
+          ticks: {
+            color: "#9ca3af",
+            font: { size: 11 },
+            callback: v => v.toLocaleString("fr-FR") + " €"
+          },
+          beginAtZero: true,
+        }
+      }
+    }
+  });
+
+  function updateTotal(data) {
+    const total = data.reduce((s, d) => s + d.total, 0);
+    document.getElementById("chart-total").textContent = total.toLocaleString("fr-FR", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+  }
+
+  updateTotal(initialData);
+
+  // ── Overlay helpers ────────────────────────────────────────────
+  const overlay      = document.getElementById("loading-overlay");
+  const progressBar  = document.getElementById("progress-bar");
+  const loadingText  = document.getElementById("loading-text");
+  const loadingPct   = document.getElementById("loading-percent");
+  const loadingErr   = document.getElementById("loading-error");
+
+  function showOverlay(text = "", pct = 0) {
+    loadingText.textContent    = text;
+    progressBar.style.width    = pct + "%";
+    loadingPct.textContent     = pct + "%";
+    loadingErr.style.display   = "none";
+    overlay.classList.add("visible");
+  }
+
+  function hideOverlay() {
+    overlay.classList.remove("visible");
+  }
+
+  function updateOverlay(state) {
+    progressBar.style.width = state.percent + "%";
+    loadingText.textContent = state.text;
+    loadingPct.textContent  = state.percent + "%";
+    if (state.error) {
+      loadingErr.textContent  = "Erreur : " + state.error;
+      loadingErr.style.display = "block";
+    } else {
+      loadingErr.style.display = "none";
+    }
+  }
+
+  // ── Refresh ────────────────────────────────────────────────────
+  function getCookie(name) {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(";").shift();
+    return "";
+  }
+
+  let pollingTimer = null;
+
+  function startPolling() {
+    if (pollingTimer) return;
+    pollingTimer = setInterval(async () => {
+      try {
+        const resp  = await fetch("{% url 'recettes_loading_status' %}");
+        const state = await resp.json();
+        updateOverlay(state);
+
+        if (!state.loading) {
+          clearInterval(pollingTimer);
+          pollingTimer = null;
+          hideOverlay();
+
+          const btn = document.getElementById("btn-refresh");
+          const msg = document.getElementById("status-msg");
+          btn.disabled = false;
+          btn.textContent = "🔄 Rafraichir";
+
+          if (state.error) {
+            msg.textContent = "Erreur : " + state.error;
+            msg.className = "error";
+          } else {
+            // Reload chart for current month
+            const dataResp = await fetch(
+              `{% url 'recettes_data' %}?year=${currentYear}&month=${currentMonth}`
+            );
+            const { data } = await dataResp.json();
+            chart.data = buildDatasets(data);
+            chart.update();
+            updateTotal(data);
+            msg.textContent = "Données mises à jour.";
+          }
+        }
+      } catch {
+        // Network hiccup — keep polling
+      }
+    }, 400);
+  }
+
+  async function doRefresh() {
+    const btn = document.getElementById("btn-refresh");
+    const msg = document.getElementById("status-msg");
+    btn.disabled = true;
+    btn.textContent = "⏳ Chargement…";
+    msg.textContent = "";
+    msg.className = "";
+
+    try {
+      const resp = await fetch("{% url 'recettes_refresh' %}", {
+        method: "POST",
+        headers: { "X-CSRFToken": getCookie("csrftoken") },
+      });
+      const result = await resp.json();
+      if (!resp.ok || result.error) throw new Error(result.error || "Server error");
+
+      showOverlay("Démarrage du chargement…", 0);
+      startPolling();
+    } catch (err) {
+      msg.textContent = "Erreur : " + err.message;
+      msg.className = "error";
+      btn.disabled = false;
+      btn.textContent = "🔄 Rafraichir";
+    }
+  }
+</script>
+
+</body>
+</html>

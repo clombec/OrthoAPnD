@@ -1,10 +1,10 @@
 import json
 import threading
+from functools import wraps
 
 from django.http import JsonResponse
 from django.shortcuts import render, redirect
-from django.views.decorators.http import require_POST
-from django.utils.decorators import method_decorator
+from django.views.decorators.http import require_POST, require_GET
 from django.views.decorators.csrf import ensure_csrf_cookie
 
 from . import loading_state
@@ -13,6 +13,10 @@ from .services import (
     save_proth_colors,
     sync_proth_procedures_to_config,
     refresh_proth_records_from_external,
+    refresh_income_from_external,
+    get_income_by_month,
+    get_available_month_range,
+    get_intra_pin,
     is_orthoaget_configured,
     setup_orthoaget,
     SORTABLE_FIELDS,
@@ -62,12 +66,26 @@ def _start_refresh_if_idle() -> None:
         _refresh_thread.start()
 
 
+# ── Intra PIN auth ────────────────────────────────────────────────────────────
+
+SESSION_KEY = "intra_authenticated"
+
+
+def require_intra_auth(view_fn):
+    """Decorator: redirect to PIN page if the user is not intra-authenticated."""
+    @wraps(view_fn)
+    def wrapper(request, *args, **kwargs):
+        if not request.session.get(SESSION_KEY):
+            return redirect("intra_pin")
+        return view_fn(request, *args, **kwargs)
+    return wrapper
+
+
 # ── Views ─────────────────────────────────────────────────────────────────────
 
 def landing(request):
     if not is_orthoaget_configured():
         return redirect("setup")
-
     return render(request, "dashboard/landing.html")
 
 
@@ -151,8 +169,9 @@ def save_colors_view(request):
             return JsonResponse({"error": "Invalid payload"}, status=400)
         save_proth_colors(colors)
         return JsonResponse({"ok": True})
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         return JsonResponse({"error": str(exc)}, status=500)
+
 
 @require_POST
 def sync_records_view(request):
@@ -162,3 +181,132 @@ def sync_records_view(request):
         return JsonResponse({"ok": True, "started": True})
     except Exception as exc:
         return JsonResponse({"error": str(exc)}, status=500)
+
+
+# ── Intra views ───────────────────────────────────────────────────────────────
+
+@ensure_csrf_cookie
+def intra_pin_view(request):
+    """PIN login page for the intranet section."""
+    if request.session.get(SESSION_KEY):
+        return redirect("intra_landing")
+
+    error = None
+    if request.method == "POST":
+        pin = request.POST.get("pin", "").strip()
+        if pin == get_intra_pin():
+            request.session[SESSION_KEY] = True
+            return redirect("intra_landing")
+        error = "Code PIN incorrect."
+
+    return render(request, "dashboard/intra_pin.html", {"error": error})
+
+
+@require_intra_auth
+def intra_landing_view(request):
+    return render(request, "dashboard/landing_intra.html")
+
+
+@require_intra_auth
+def recettes_view(request):
+    from datetime import date
+    today = date.today()
+    year  = int(request.GET.get("year",  today.year))
+    month = int(request.GET.get("month", today.month))
+
+    data        = get_income_by_month(year, month)
+    month_range = get_available_month_range()  # (first "YYYY-MM", last "YYYY-MM") or None
+
+    current_ym = f"{year:04d}-{month:02d}"
+
+    has_prev = has_next = False
+    if month_range:
+        first_ym, last_ym = month_range
+        has_prev = current_ym > first_ym
+        has_next = current_ym < last_ym
+
+    # Compute prev/next year-month values
+    if month == 1:
+        prev_year, prev_month = year - 1, 12
+    else:
+        prev_year, prev_month = year, month - 1
+
+    if month == 12:
+        next_year, next_month = year + 1, 1
+    else:
+        next_year, next_month = year, month + 1
+
+    MONTH_NAMES = [
+        "", "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
+        "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre",
+    ]
+
+    return render(request, "dashboard/recettes.html", {
+        "chart_data_json": json.dumps(data),
+        "year":       year,
+        "month":      month,
+        "month_name": MONTH_NAMES[month],
+        "has_prev":   has_prev,
+        "has_next":   has_next,
+        "prev_year":  prev_year,
+        "prev_month": prev_month,
+        "next_year":  next_year,
+        "next_month": next_month,
+    })
+
+
+_income_refresh_lock = threading.Lock()
+_income_refresh_thread: threading.Thread | None = None
+
+
+def _run_income_refresh() -> None:
+    global _income_refresh_thread
+    try:
+        def progress(text: str, percent: int) -> None:
+            loading_state.update(True, text, percent, name="income")
+
+        refresh_income_from_external(progress_cb=progress)
+        loading_state.update(False, "Chargement terminé", 100, name="income")
+    except Exception as exc:
+        loading_state.update(False, "", 0, error=str(exc), name="income")
+    finally:
+        with _income_refresh_lock:
+            _income_refresh_thread = None
+
+
+def _start_income_refresh_if_idle() -> bool:
+    """Start background income refresh. Returns True if started, False if already running."""
+    global _income_refresh_thread
+    with _income_refresh_lock:
+        if _income_refresh_thread is not None:
+            return False
+        loading_state.update(True, "Démarrage du chargement…", 0, name="income")
+        _income_refresh_thread = threading.Thread(target=_run_income_refresh, daemon=True)
+        _income_refresh_thread.start()
+        return True
+
+
+@require_POST
+@require_intra_auth
+def recettes_refresh_view(request):
+    """Start a background income refresh."""
+    started = _start_income_refresh_if_idle()
+    return JsonResponse({"ok": True, "started": started})
+
+
+@require_GET
+@require_intra_auth
+def recettes_loading_status_view(request):
+    """Return the income refresh state as JSON."""
+    return JsonResponse(loading_state.get(name="income"))
+
+
+@require_GET
+@require_intra_auth
+def recettes_data_view(request):
+    """Return daily income totals for a given month as JSON for the chart."""
+    from datetime import date
+    today = date.today()
+    year  = int(request.GET.get("year",  today.year))
+    month = int(request.GET.get("month", today.month))
+    return JsonResponse({"data": get_income_by_month(year, month)})

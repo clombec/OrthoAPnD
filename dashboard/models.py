@@ -29,3 +29,15 @@ class UsersRecord(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.patient_id})"
+
+
+class RecetteRecord(models.Model):
+    """
+    Daily payment record from OrthoAdvance reglements/history.
+    Fully replaced on each refresh.
+    """
+    date    = models.DateField()
+    amount  = models.FloatField()
+
+    def __str__(self):
+        return f"{self.date} — {self.amount} €"

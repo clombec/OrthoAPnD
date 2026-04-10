@@ -1,27 +1,30 @@
 """
 loading_state.py
 
-Thread-safe singleton that tracks the background refresh progress.
+Thread-safe named loading states.
+Each consumer (proth, income, …) gets its own isolated slot.
 """
 import threading
 
 _lock = threading.Lock()
-_state: dict = {
-    "loading": False,
-    "text": "",
-    "percent": 0,
-    "error": None,
-}
+_states: dict[str, dict] = {}
 
 
-def get() -> dict:
+def _default() -> dict:
+    return {"loading": False, "text": "", "percent": 0, "error": None}
+
+
+def get(name: str = "default") -> dict:
     with _lock:
-        return dict(_state)
+        return dict(_states.get(name, _default()))
 
 
-def update(loading: bool, text: str, percent: int, error: str | None = None) -> None:
+def update(loading: bool, text: str, percent: int,
+           error: str | None = None, name: str = "default") -> None:
     with _lock:
-        _state["loading"] = loading
-        _state["text"] = text
-        _state["percent"] = percent
-        _state["error"] = error
+        if name not in _states:
+            _states[name] = _default()
+        _states[name]["loading"] = loading
+        _states[name]["text"]    = text
+        _states[name]["percent"] = percent
+        _states[name]["error"]   = error

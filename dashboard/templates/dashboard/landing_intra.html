@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Intranet — Cabinet Dr Beclin</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #222325;
+      color: #f8f9fb;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem 1.5rem;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 3rem;
+    }
+
+    header h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: #f8f9fb;
+    }
+
+    header p {
+      margin-top: 0.5rem;
+      color: #9ca3af;
+      font-size: 0.95rem;
+    }
+
+    .activities {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 1.25rem;
+      width: 100%;
+      max-width: 900px;
+    }
+
+    .card {
+      background: #2d2f33;
+      border: 1.5px solid #3a3d44;
+      border-radius: 14px;
+      padding: 1.75rem 1.5rem;
+      text-decoration: none;
+      color: inherit;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.75rem;
+      transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s;
+      cursor: pointer;
+    }
+
+    .card:hover {
+      border-color: #6b92e4;
+      box-shadow: 0 0 0 3px rgba(107, 146, 228, 0.15);
+      transform: translateY(-2px);
+    }
+
+    .card-icon { font-size: 2rem; line-height: 1; }
+    .card-title { font-size: 1rem; font-weight: 700; color: #f8f9fb; }
+    .card-description { font-size: 0.82rem; color: #9ca3af; line-height: 1.45; }
+    .card-arrow { margin-top: auto; align-self: flex-end; color: #6b92e4; font-size: 1.1rem; }
+
+    .btn-back {
+      position: fixed;
+      top: 1.5rem;
+      left: 1.5rem;
+      background: none;
+      border: 1.5px solid #3a3d44;
+      border-radius: 8px;
+      padding: 0.5rem 0.85rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      font-family: inherit;
+      color: #9ca3af;
+      cursor: pointer;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      transition: border-color 0.2s, color 0.2s;
+    }
+    .btn-back:hover { border-color: #6b92e4; color: #f8f9fb; }
+  </style>
+</head>
+<body>
+
+  <a href="{% url 'landing' %}" class="btn-back">← Accueil</a>
+
+  <header>
+    <h1>Intranet</h1>
+    <p>Cabinet Dr Beclin — espace privé</p>
+  </header>
+
+  <section class="activities">
+
+    <a href="{% url 'recettes' %}" class="card">
+      <span class="card-icon">💰</span>
+      <span class="card-title">Recettes</span>
+      <span class="card-description">Suivi des encaissements sur les 30 derniers jours.</span>
+      <span class="card-arrow">→</span>
+    </a>
+
+    {# Add new intra services here #}
+
+  </section>
+
+</body>
+</html>
