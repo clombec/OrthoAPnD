@@ -44,14 +44,29 @@
     }
     .btn-back:hover { border-color: #6b92e4; color: #f8f9fb; }
 
-    /* ── Month navigation ────────────────────────────────────────── */
-    .month-nav {
+    /* ── View selector ───────────────────────────────────────────── */
+    .select-view {
+      background: #2d2f33;
+      border: 1.5px solid #3a3d44;
+      border-radius: 8px;
+      padding: 0.45rem 0.75rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      font-family: inherit;
+      color: #f8f9fb;
+      cursor: pointer;
+      transition: border-color 0.2s;
+    }
+    .select-view:hover, .select-view:focus { border-color: #6b92e4; outline: none; }
+
+    /* ── Period navigation ───────────────────────────────────────── */
+    .period-nav {
       display: flex;
       align-items: center;
       gap: 0.5rem;
     }
 
-    .btn-month {
+    .btn-period {
       background: none;
       border: 1.5px solid #3a3d44;
       border-radius: 8px;
@@ -66,19 +81,19 @@
       display: flex;
       align-items: center;
     }
-    .btn-month:hover:not(.disabled) { border-color: #6b92e4; color: #6b92e4; }
-    .btn-month.disabled {
+    .btn-period:hover:not(.disabled) { border-color: #6b92e4; color: #6b92e4; }
+    .btn-period.disabled {
       color: #4a4d56;
       border-color: #2d2f33;
       cursor: default;
       pointer-events: none;
     }
 
-    .month-label {
-      font-size: 1.2rem;
+    .period-label {
+      font-size: 1.1rem;
       font-weight: 700;
       color: #f8f9fb;
-      min-width: 180px;
+      min-width: 160px;
       text-align: center;
       letter-spacing: -0.01em;
     }
@@ -194,19 +209,45 @@
   <div class="top-bar">
     <a href="{% url 'intra_landing' %}" class="btn-back">← Intranet</a>
 
-    <div class="month-nav">
-      {% if has_prev %}
-        <a href="?year={{ prev_year }}&month={{ prev_month }}" class="btn-month">‹</a>
-      {% else %}
-        <span class="btn-month disabled">‹</span>
-      {% endif %}
+    <!-- View selector -->
+    <select class="select-view" onchange="changeView(this)">
+      <option value="daily"   {% if view_type == 'daily'   %}selected{% endif %}>Vue quotidienne</option>
+      <option value="monthly" {% if view_type == 'monthly' %}selected{% endif %}>Vue mensuelle</option>
+      <option value="yearly"  {% if view_type == 'yearly'  %}selected{% endif %}>Vue annuelle</option>
+    </select>
 
-      <span class="month-label">{{ month_name }} {{ year }}</span>
+    <!-- Period navigation -->
+    <div class="period-nav">
+      {% if view_type == 'yearly' %}
+        <span class="btn-period disabled">‹</span>
+        <span class="period-label">Toutes les années</span>
+        <span class="btn-period disabled">›</span>
 
-      {% if has_next %}
-        <a href="?year={{ next_year }}&month={{ next_month }}" class="btn-month">›</a>
-      {% else %}
-        <span class="btn-month disabled">›</span>
+      {% elif view_type == 'monthly' %}
+        {% if has_prev %}
+          <a href="?view=monthly&year={{ prev_year }}" class="btn-period">‹</a>
+        {% else %}
+          <span class="btn-period disabled">‹</span>
+        {% endif %}
+        <span class="period-label">{{ year }}</span>
+        {% if has_next %}
+          <a href="?view=monthly&year={{ next_year }}" class="btn-period">›</a>
+        {% else %}
+          <span class="btn-period disabled">›</span>
+        {% endif %}
+
+      {% else %}{# daily #}
+        {% if has_prev %}
+          <a href="?view=daily&year={{ prev_year }}&month={{ prev_month }}" class="btn-period">‹</a>
+        {% else %}
+          <span class="btn-period disabled">‹</span>
+        {% endif %}
+        <span class="period-label">{{ month_name }} {{ year }}</span>
+        {% if has_next %}
+          <a href="?view=daily&year={{ next_year }}&month={{ next_month }}" class="btn-period">›</a>
+        {% else %}
+          <span class="btn-period disabled">›</span>
+        {% endif %}
       {% endif %}
     </div>
 
@@ -217,7 +258,12 @@
 
   <div class="chart-card">
     <div class="chart-meta">
-      <span class="chart-title">Encaissements par jour</span>
+      <span class="chart-title" id="chart-title">
+        {% if view_type == 'yearly' %}Encaissements par année
+        {% elif view_type == 'monthly' %}Encaissements par mois — {{ year }}
+        {% else %}Encaissements par jour — {{ month_name }} {{ year }}
+        {% endif %}
+      </span>
       <span>
         <span class="chart-total" id="chart-total">—</span>
         <span class="chart-total-label">€ total</span>
@@ -246,32 +292,56 @@
   <form style="display:none">{% csrf_token %}</form>
 
 <script>
-  const initialData = {{ chart_data_json|safe }};
+  const viewType    = "{{ view_type }}";
   const currentYear  = {{ year }};
   const currentMonth = {{ month }};
+  let currentData    = {{ chart_data_json|safe }};
 
-  // Day-of-week abbreviations (fr, Monday = 0)
-  const DAY_ABBR = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
+  // ── View selector ──────────────────────────────────────────────
+  function changeView(sel) {
+    const v = sel.value;
+    const url = new URL(window.location);
+    url.searchParams.set("view", v);
+    if (v === "yearly") {
+      url.searchParams.delete("month");
+      url.searchParams.delete("year");
+    } else if (v === "monthly") {
+      url.searchParams.delete("month");
+      if (!url.searchParams.has("year")) url.searchParams.set("year", currentYear);
+    }
+    window.location = url.toString();
+  }
+
+  // ── Helpers ────────────────────────────────────────────────────
+  const DAY_ABBR   = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
 
   function dayAbbr(dateStr) {
     const [y, m, d] = dateStr.split("-").map(Number);
-    const dow = new Date(y, m - 1, d).getDay(); // 0=Sun
-    const adjusted = (dow + 6) % 7;             // 0=Mon
-    return DAY_ABBR[adjusted];
+    const dow = new Date(y, m - 1, d).getDay();
+    return DAY_ABBR[(dow + 6) % 7];
   }
 
-  // ── Chart setup ────────────────────────────────────────────────
-  const ctx = document.getElementById("income-chart").getContext("2d");
-
+  // ── Chart datasets ─────────────────────────────────────────────
   function buildDatasets(data) {
-    return {
-      labels: data.map(d => {
+    let labels, values;
+    if (viewType === "yearly") {
+      labels = data.map(d => String(d.year));
+      values = data.map(d => d.total);
+    } else if (viewType === "monthly") {
+      labels = data.map(d => d.label);
+      values = data.map(d => d.total);
+    } else {
+      labels = data.map(d => {
         const [, , day] = d.date.split("-");
-        return [day, dayAbbr(d.date)];   // two-line label
-      }),
+        return [day, dayAbbr(d.date)];
+      });
+      values = data.map(d => d.total);
+    }
+    return {
+      labels,
       datasets: [{
         label: "Recettes (€)",
-        data: data.map(d => d.total),
+        data: values,
         backgroundColor: "rgba(107, 146, 228, 0.55)",
         borderColor: "#6b92e4",
         borderWidth: 1.5,
@@ -281,9 +351,11 @@
     };
   }
 
+  // ── Chart init ─────────────────────────────────────────────────
+  const ctx = document.getElementById("income-chart").getContext("2d");
   const chart = new Chart(ctx, {
     type: "bar",
-    data: buildDatasets(initialData),
+    data: buildDatasets(currentData),
     options: {
       responsive: true,
       maintainAspectRatio: false,
@@ -292,9 +364,13 @@
         tooltip: {
           callbacks: {
             title: items => {
-              const d = initialData[items[0].dataIndex];
-              const [y, m, day] = d.date.split("-");
-              return `${dayAbbr(d.date)} ${day}/${m}/${y}`;
+              const d = currentData[items[0].dataIndex];
+              if (viewType === "daily") {
+                const [y, m, day] = d.date.split("-");
+                return `${dayAbbr(d.date)} ${day}/${m}/${y}`;
+              }
+              if (viewType === "monthly") return d.label;
+              return String(d.year);
             },
             label: ctx => `${ctx.parsed.y.toFixed(2)} €`
           }
@@ -303,11 +379,7 @@
       scales: {
         x: {
           grid: { color: "rgba(255,255,255,0.06)" },
-          ticks: {
-            color: "#9ca3af",
-            font: { size: 11 },
-            maxRotation: 0,
-          }
+          ticks: { color: "#9ca3af", font: { size: 11 }, maxRotation: 0 }
         },
         y: {
           grid: { color: "rgba(255,255,255,0.06)" },
@@ -330,40 +402,38 @@
     });
   }
 
-  updateTotal(initialData);
+  updateTotal(currentData);
 
   // ── Overlay helpers ────────────────────────────────────────────
-  const overlay      = document.getElementById("loading-overlay");
-  const progressBar  = document.getElementById("progress-bar");
-  const loadingText  = document.getElementById("loading-text");
-  const loadingPct   = document.getElementById("loading-percent");
-  const loadingErr   = document.getElementById("loading-error");
+  const overlay     = document.getElementById("loading-overlay");
+  const progressBar = document.getElementById("progress-bar");
+  const loadingText = document.getElementById("loading-text");
+  const loadingPct  = document.getElementById("loading-percent");
+  const loadingErr  = document.getElementById("loading-error");
 
   function showOverlay(text = "", pct = 0) {
-    loadingText.textContent    = text;
-    progressBar.style.width    = pct + "%";
-    loadingPct.textContent     = pct + "%";
-    loadingErr.style.display   = "none";
+    loadingText.textContent  = text;
+    progressBar.style.width  = pct + "%";
+    loadingPct.textContent   = pct + "%";
+    loadingErr.style.display = "none";
     overlay.classList.add("visible");
   }
 
-  function hideOverlay() {
-    overlay.classList.remove("visible");
-  }
+  function hideOverlay() { overlay.classList.remove("visible"); }
 
   function updateOverlay(state) {
     progressBar.style.width = state.percent + "%";
     loadingText.textContent = state.text;
     loadingPct.textContent  = state.percent + "%";
     if (state.error) {
-      loadingErr.textContent  = "Erreur : " + state.error;
+      loadingErr.textContent   = "Erreur : " + state.error;
       loadingErr.style.display = "block";
     } else {
       loadingErr.style.display = "none";
     }
   }
 
-  // ── Refresh ────────────────────────────────────────────────────
+  // ── Refresh & polling ──────────────────────────────────────────
   function getCookie(name) {
     const value = `; ${document.cookie}`;
     const parts = value.split(`; ${name}=`);
@@ -395,11 +465,11 @@
             msg.textContent = "Erreur : " + state.error;
             msg.className = "error";
           } else {
-            // Reload chart for current month
             const dataResp = await fetch(
-              `{% url 'recettes_data' %}?year=${currentYear}&month=${currentMonth}`
+              `{% url 'recettes_data' %}?view=${viewType}&year=${currentYear}&month=${currentMonth}`
             );
             const { data } = await dataResp.json();
+            currentData = data;
             chart.data = buildDatasets(data);
             chart.update();
             updateTotal(data);

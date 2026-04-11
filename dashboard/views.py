@@ -15,7 +15,10 @@ from .services import (
     refresh_proth_records_from_external,
     refresh_income_from_external,
     get_income_by_month,
+    get_income_by_year,
+    get_income_all_years,
     get_available_month_range,
+    get_available_year_range,
     get_intra_pin,
     is_orthoaget_configured,
     setup_orthoaget,
@@ -207,42 +210,54 @@ def intra_landing_view(request):
     return render(request, "dashboard/landing_intra.html")
 
 
+MONTH_NAMES = [
+    "", "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
+    "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre",
+]
+
+
 @require_intra_auth
 def recettes_view(request):
     from datetime import date
     today = date.today()
+
+    view_type = request.GET.get("view", "daily")
+    if view_type not in ("daily", "monthly", "yearly"):
+        view_type = "daily"
+
     year  = int(request.GET.get("year",  today.year))
     month = int(request.GET.get("month", today.month))
 
-    data        = get_income_by_month(year, month)
-    month_range = get_available_month_range()  # (first "YYYY-MM", last "YYYY-MM") or None
-
-    current_ym = f"{year:04d}-{month:02d}"
-
     has_prev = has_next = False
-    if month_range:
-        first_ym, last_ym = month_range
-        has_prev = current_ym > first_ym
-        has_next = current_ym < last_ym
+    prev_year = prev_month = next_year = next_month = None
 
-    # Compute prev/next year-month values
-    if month == 1:
-        prev_year, prev_month = year - 1, 12
-    else:
-        prev_year, prev_month = year, month - 1
+    if view_type == "yearly":
+        data = get_income_all_years()
 
-    if month == 12:
-        next_year, next_month = year + 1, 1
-    else:
-        next_year, next_month = year, month + 1
+    elif view_type == "monthly":
+        data = get_income_by_year(year)
+        year_range = get_available_year_range()
+        if year_range:
+            first_year, last_year = year_range
+            has_prev = year > first_year
+            has_next = year < last_year
+        prev_year, next_year = year - 1, year + 1
+        prev_month = next_month = month
 
-    MONTH_NAMES = [
-        "", "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
-        "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre",
-    ]
+    else:  # daily
+        data = get_income_by_month(year, month)
+        month_range = get_available_month_range()
+        current_ym = f"{year:04d}-{month:02d}"
+        if month_range:
+            first_ym, last_ym = month_range
+            has_prev = current_ym > first_ym
+            has_next = current_ym < last_ym
+        prev_year, prev_month = (year - 1, 12) if month == 1 else (year, month - 1)
+        next_year, next_month = (year + 1,  1) if month == 12 else (year, month + 1)
 
     return render(request, "dashboard/recettes.html", {
         "chart_data_json": json.dumps(data),
+        "view_type":  view_type,
         "year":       year,
         "month":      month,
         "month_name": MONTH_NAMES[month],
@@ -304,9 +319,18 @@ def recettes_loading_status_view(request):
 @require_GET
 @require_intra_auth
 def recettes_data_view(request):
-    """Return daily income totals for a given month as JSON for the chart."""
+    """Return income data as JSON for the chart (view-type aware)."""
     from datetime import date
     today = date.today()
+    view_type = request.GET.get("view", "daily")
     year  = int(request.GET.get("year",  today.year))
     month = int(request.GET.get("month", today.month))
-    return JsonResponse({"data": get_income_by_month(year, month)})
+
+    if view_type == "yearly":
+        data = get_income_all_years()
+    elif view_type == "monthly":
+        data = get_income_by_year(year)
+    else:
+        data = get_income_by_month(year, month)
+
+    return JsonResponse({"data": data})

@@ -31,7 +31,7 @@ class UsersRecord(models.Model):
         return f"{self.name} ({self.patient_id})"
 
 
-class RecetteRecord(models.Model):
+class IncomeRecord(models.Model):
     """
     Daily payment record from OrthoAdvance reglements/history.
     Fully replaced on each refresh.

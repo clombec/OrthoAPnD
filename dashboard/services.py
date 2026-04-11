@@ -77,3 +77,12 @@ def get_income_by_month(year: int, month: int) -> list[dict]:
 
 def get_available_month_range():
     return income_services.get_available_month_range()
+
+def get_income_by_year(year: int) -> list[dict]:
+    return income_services.get_income_by_year(year=year)
+
+def get_income_all_years() -> list[dict]:
+    return income_services.get_income_all_years()
+
+def get_available_year_range():
+    return income_services.get_available_year_range()

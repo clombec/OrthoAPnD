@@ -8,7 +8,7 @@ from datetime import date, datetime
 
 from django.db.models import Sum
 
-from dashboard.models import RecetteRecord
+from dashboard.models import IncomeRecord
 from orthoaget.session import OrthoASession
 
 # Column names as returned by OrthoABase after CSV cleanup
@@ -40,7 +40,7 @@ def refresh_income_from_external(progress_cb=None) -> dict:
     _progress("Connexion à OrthoAdvance…", 5)
     with OrthoASession() as session:
         _progress("Téléchargement des encaissements…", 30)
-        rows = session.get_income_records(all=True)
+        rows = session.get_income_records(5)
 
     _progress("Traitement des données…", 70)
     objects = []
@@ -52,11 +52,11 @@ def refresh_income_from_external(progress_cb=None) -> dict:
             logging.warning(f"Skipping income row — unparseable date or amount: {row}")
             skipped += 1
             continue
-        objects.append(RecetteRecord(date=parsed_date, amount=amount))
+        objects.append(IncomeRecord(date=parsed_date, amount=amount))
 
     _progress("Enregistrement en base de données…", 90)
-    RecetteRecord.objects.all().delete()
-    RecetteRecord.objects.bulk_create(objects)
+    IncomeRecord.objects.all().delete()
+    IncomeRecord.objects.bulk_create(objects)
 
     logging.debug(f"Income refreshed: {len(objects)} saved, {skipped} skipped.")
     _progress("Chargement terminé", 100)
@@ -69,7 +69,7 @@ def get_income_by_month(year: int, month: int) -> list[dict]:
     Each entry: {"date": "YYYY-MM-DD", "total": float}.
     """
     qs = (
-        RecetteRecord.objects
+        IncomeRecord.objects
         .filter(date__year=year, date__month=month)
         .values("date")
         .annotate(total=Sum("amount"))
@@ -84,9 +84,54 @@ def get_available_month_range() -> tuple[str, str] | None:
     or None if the table is empty.
     """
     from django.db.models import Min, Max
-    agg = RecetteRecord.objects.aggregate(min_date=Min("date"), max_date=Max("date"))
+    agg = IncomeRecord.objects.aggregate(min_date=Min("date"), max_date=Max("date"))
     if agg["min_date"] is None:
         return None
     first = agg["min_date"].strftime("%Y-%m")
     last  = agg["max_date"].strftime("%Y-%m")
     return first, last
+
+
+def get_income_by_year(year: int) -> list[dict]:
+    """
+    Return monthly totals for the given calendar year, sorted by month ascending.
+    Each entry: {"month": int, "label": str, "total": float}.
+    """
+    MONTH_SHORT = ["", "Jan", "Fév", "Mar", "Avr", "Mai", "Juin",
+                   "Juil", "Août", "Sep", "Oct", "Nov", "Déc"]
+    qs = (
+        IncomeRecord.objects
+        .filter(date__year=year)
+        .values("date__month")
+        .annotate(total=Sum("amount"))
+        .order_by("date__month")
+    )
+    return [
+        {"month": r["date__month"], "label": MONTH_SHORT[r["date__month"]], "total": round(r["total"], 2)}
+        for r in qs
+    ]
+
+
+def get_income_all_years() -> list[dict]:
+    """
+    Return yearly totals for all years in the DB, sorted ascending.
+    Each entry: {"year": int, "total": float}.
+    """
+    qs = (
+        IncomeRecord.objects
+        .values("date__year")
+        .annotate(total=Sum("amount"))
+        .order_by("date__year")
+    )
+    return [{"year": r["date__year"], "total": round(r["total"], 2)} for r in qs]
+
+
+def get_available_year_range() -> tuple[int, int] | None:
+    """
+    Return (first_year, last_year) as ints based on DB content, or None if empty.
+    """
+    from django.db.models import Min, Max
+    agg = IncomeRecord.objects.aggregate(min_date=Min("date"), max_date=Max("date"))
+    if agg["min_date"] is None:
+        return None
+    return agg["min_date"].year, agg["max_date"].year
