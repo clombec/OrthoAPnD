@@ -4,7 +4,15 @@
         {
             "label": "Django: Run Server",
             "type": "shell",
-            "command": ".venv\\Scripts\\python manage.py runserver",
+            "windows": {
+                "command": ".venv\\Scripts\\python manage.py runserver",
+            },
+            "osx": {
+                "command": ".venv/bin/python manage.py runserver"
+            },
+            "linux": {
+                "command": ".venv/bin/python manage.py runserver"
+            },
             "group": "test",
             "presentation": {
                 "reveal": "always",
@@ -15,14 +23,31 @@
         {
             "label": "Django: Make Migrations",
             "type": "shell",
-            "command": ".venv\\Scripts\\python manage.py makemigrations",
+            "windows": {
+                "command": ".venv\\Scripts\\python manage.py makemigrations",
+            },
+            "osx": {
+                "command": ".venv/bin/python manage.py makemigrations"
+            },
+            "linux": {
+                "command": ".venv/bin/python manage.py makemigrations"
+            },
             "group": "build",
             "problemMatcher": []
         },
         {
             "label": "Django: Migrate",
             "type": "shell",
-            "command": ".venv\\Scripts\\python manage.py migrate",
+            "windows": {
+                "command": ".venv\\Scripts\\python manage.py migrate",
+            },
+            "osx": {
+                "command": ".venv/bin/python manage.py migrate"
+            },
+            "linux": {
+                "command": ".venv/bin/python manage.py migrate"
+            },
+
             "group": "build",
             "dependsOn": [
                 "Django: Make Migrations"
@@ -32,7 +57,15 @@
         {
             "label": "Django: Import Data",
             "type": "shell",
-            "command": ".venv\\Scripts\\python import_data.py",
+            "windows": {
+                "command": ".venv\\Scripts\\python import_data.py",
+            },
+            "osx": {
+                "command": ".venv/bin/python import_data.py"
+            },
+            "linux": {
+                "command": ".venv/bin/python import_data.py"
+            },
             "group": "none",
             "presentation": {
                 "reveal": "always",
