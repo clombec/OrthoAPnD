@@ -5,6 +5,7 @@ from pathlib import Path
 from orthoaget import PROJECT_ROOT
 import dashboard.app_services.proth_services as proth_services
 import dashboard.app_services.income_services as income_services
+import dashboard.app_services.calendar_services as calendar_services
 
 SORTABLE_FIELDS = proth_services.SORTABLE_FIELDS
 
@@ -86,3 +87,27 @@ def get_income_all_years() -> list[dict]:
 
 def get_available_year_range():
     return income_services.get_available_year_range()
+
+def get_income_comparison(year1: int, year2: int) -> list[dict]:
+    return income_services.get_income_comparison(year1=year1, year2=year2)
+
+
+# ── Planning (journées types) ─────────────────────────────────────────────────
+
+def is_planning_data_available() -> bool:
+    return calendar_services.is_data_available()
+
+def refresh_planning_from_external(progress_cb=None) -> dict:
+    return calendar_services.refresh_records_from_external(progress_cb=progress_cb)
+
+def get_working_days() -> list[dict]:
+    return calendar_services.get_working_days()
+
+def get_day_planning(day_date) -> dict | None:
+    return calendar_services.get_day_planning(day_date)
+
+def get_adjacent_dates(day_date):
+    return calendar_services.get_adjacent_dates(day_date)
+
+def get_nearest_working_day(ref):
+    return calendar_services.get_nearest_working_day(ref)

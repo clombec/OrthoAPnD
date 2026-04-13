@@ -118,6 +118,25 @@
     .btn-refresh:hover { background: #1d4ed8; }
     .btn-refresh:disabled { background: #4a4d56; cursor: not-allowed; }
 
+    /* ── Compare button ──────────────────────────────────────────── */
+    .btn-compare {
+      background: none;
+      border: 1.5px solid #3a3d44;
+      border-radius: 8px;
+      padding: 0.5rem 1rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      font-family: inherit;
+      color: #9ca3af;
+      cursor: pointer;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      transition: border-color 0.2s, color 0.2s;
+    }
+    .btn-compare:hover { border-color: #6b92e4; color: #f8f9fb; }
+
     /* ── Chart card ──────────────────────────────────────────────── */
     .chart-card {
       background: #2d2f33;
@@ -250,6 +269,8 @@
         {% endif %}
       {% endif %}
     </div>
+
+    <a href="{% url 'recettes_compare' %}" class="btn-compare">📊 Comparaison annuelle</a>
 
     <button class="btn-refresh" id="btn-refresh" onclick="doRefresh()">
       🔄 Rafraichir

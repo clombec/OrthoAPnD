@@ -135,3 +135,33 @@ def get_available_year_range() -> tuple[int, int] | None:
     if agg["min_date"] is None:
         return None
     return agg["min_date"].year, agg["max_date"].year
+
+
+def get_income_comparison(year1: int, year2: int) -> list[dict]:
+    """
+    Return monthly comparison data for two years (always 12 months).
+    Each entry: {"month": int, "label": str, "y1": float, "y2": float, "pct_diff": float|None}.
+    pct_diff = (y2 - y1) / y1 * 100, or None when y1 == 0.
+    """
+    MONTH_SHORT = ["", "Jan", "Fév", "Mar", "Avr", "Mai", "Juin",
+                   "Juil", "Août", "Sep", "Oct", "Nov", "Déc"]
+
+    def monthly_totals(year: int) -> dict[int, float]:
+        qs = (
+            IncomeRecord.objects
+            .filter(date__year=year)
+            .values("date__month")
+            .annotate(total=Sum("amount"))
+        )
+        return {r["date__month"]: round(r["total"], 2) for r in qs}
+
+    t1 = monthly_totals(year1)
+    t2 = monthly_totals(year2)
+
+    result = []
+    for m in range(1, 13):
+        v1 = t1.get(m, 0.0)
+        v2 = t2.get(m, 0.0)
+        pct_diff = round((v2 - v1) / v1 * 100, 1) if v1 > 0 else None
+        result.append({"month": m, "label": MONTH_SHORT[m], "y1": v1, "y2": v2, "pct_diff": pct_diff})
+    return result

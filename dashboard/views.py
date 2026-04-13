@@ -19,10 +19,16 @@ from .services import (
     get_income_all_years,
     get_available_month_range,
     get_available_year_range,
+    get_income_comparison,
     get_intra_pin,
     is_orthoaget_configured,
     setup_orthoaget,
     SORTABLE_FIELDS,
+    is_planning_data_available,
+    refresh_planning_from_external,
+    get_day_planning,
+    get_adjacent_dates,
+    get_nearest_working_day,
 )
 
 # Column definitions: (field_name, display_label)
@@ -334,3 +340,131 @@ def recettes_data_view(request):
         data = get_income_by_month(year, month)
 
     return JsonResponse({"data": data})
+
+
+@require_intra_auth
+def recettes_compare_view(request):
+    from datetime import date
+    today = date.today()
+
+    year2 = int(request.GET.get("year", today.year))
+    year1 = year2 - 1
+
+    year_range = get_available_year_range()
+    has_prev = has_next = False
+    if year_range:
+        first_year, last_year = year_range
+        has_prev = year1 > first_year
+        has_next = year2 < last_year
+
+    data = get_income_comparison(year1, year2)
+
+    return render(request, "dashboard/recettes_compare.html", {
+        "comparison_json": json.dumps(data),
+        "year1":    year1,
+        "year2":    year2,
+        "has_prev": has_prev,
+        "has_next": has_next,
+    })
+
+
+# ── Planning ──────────────────────────────────────────────────────────────────
+
+_planning_refresh_lock = threading.Lock()
+_planning_refresh_thread: threading.Thread | None = None
+
+
+def _run_planning_refresh() -> None:
+    global _planning_refresh_thread
+    try:
+        def progress(text: str, percent: int) -> None:
+            loading_state.update(True, text, percent, name="planning")
+
+        refresh_planning_from_external(progress_cb=progress)
+        loading_state.update(False, "Chargement terminé", 100, name="planning")
+    except Exception as exc:
+        loading_state.update(False, "", 0, error=str(exc), name="planning")
+    finally:
+        with _planning_refresh_lock:
+            _planning_refresh_thread = None
+
+
+def _start_planning_refresh_if_idle() -> bool:
+    global _planning_refresh_thread
+    with _planning_refresh_lock:
+        if _planning_refresh_thread is not None:
+            return False
+        loading_state.update(True, "Démarrage du chargement…", 0, name="planning")
+        _planning_refresh_thread = threading.Thread(target=_run_planning_refresh, daemon=True)
+        _planning_refresh_thread.start()
+        return True
+
+
+@require_intra_auth
+def planning_view(request):
+    from datetime import date, datetime
+    today = date.today()
+
+    if not is_planning_data_available():
+        _start_planning_refresh_if_idle()
+
+    date_str = request.GET.get("date", "")
+    if date_str:
+        try:
+            selected_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+        except ValueError:
+            selected_date = get_nearest_working_day(today) or today
+    else:
+        selected_date = get_nearest_working_day(today) or today
+
+    day_data = get_day_planning(selected_date)
+    prev_date, next_date = get_adjacent_dates(selected_date)
+
+    state = loading_state.get(name="planning")
+
+    return render(request, "dashboard/planning.html", {
+        "day_data_json":  json.dumps(day_data),
+        "selected_date":  selected_date.isoformat(),
+        "prev_date":      prev_date.isoformat() if prev_date else None,
+        "next_date":      next_date.isoformat() if next_date else None,
+        "is_loading":     state["loading"],
+        "loading_text":   state["text"],
+        "loading_percent": state["percent"],
+    })
+
+
+@require_POST
+@require_intra_auth
+def planning_refresh_view(request):
+    started = _start_planning_refresh_if_idle()
+    return JsonResponse({"ok": True, "started": started})
+
+
+@require_GET
+@require_intra_auth
+def planning_loading_status_view(request):
+    return JsonResponse(loading_state.get(name="planning"))
+
+
+@require_GET
+@require_intra_auth
+def planning_data_view(request):
+    from datetime import datetime
+    date_str = request.GET.get("date", "")
+    if not date_str:
+        return JsonResponse({"error": "date parameter required"}, status=400)
+    try:
+        day_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+    except ValueError:
+        return JsonResponse({"error": "invalid date format, expected YYYY-MM-DD"}, status=400)
+
+    data = get_day_planning(day_date)
+    if data is None:
+        return JsonResponse({"error": "date not found"}, status=404)
+
+    prev_date, next_date = get_adjacent_dates(day_date)
+    return JsonResponse({
+        "day": data,
+        "prev_date": prev_date.isoformat() if prev_date else None,
+        "next_date": next_date.isoformat() if next_date else None,
+    })

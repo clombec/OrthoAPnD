@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Comparaison {{ year1 }} / {{ year2 }} — Intranet</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #222325;
+      color: #f8f9fb;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      padding: 1.5rem;
+      gap: 1.5rem;
+    }
+
+    /* ── Top bar ─────────────────────────────────────────────────── */
+    .top-bar {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    .btn-back {
+      background: none;
+      border: 1.5px solid #3a3d44;
+      border-radius: 8px;
+      padding: 0.5rem 0.85rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      font-family: inherit;
+      color: #9ca3af;
+      cursor: pointer;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      transition: border-color 0.2s, color 0.2s;
+    }
+    .btn-back:hover { border-color: #6b92e4; color: #f8f9fb; }
+
+    /* ── Year navigation ─────────────────────────────────────────── */
+    .year-nav {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .btn-period {
+      background: none;
+      border: 1.5px solid #3a3d44;
+      border-radius: 8px;
+      padding: 0.45rem 0.75rem;
+      font-size: 1rem;
+      font-family: inherit;
+      color: #f8f9fb;
+      cursor: pointer;
+      line-height: 1;
+      transition: border-color 0.2s, color 0.2s;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+    }
+    .btn-period:hover:not(.disabled) { border-color: #6b92e4; color: #6b92e4; }
+    .btn-period.disabled {
+      color: #4a4d56;
+      border-color: #2d2f33;
+      cursor: default;
+      pointer-events: none;
+    }
+
+    .year-label {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: #f8f9fb;
+      min-width: 120px;
+      text-align: center;
+      letter-spacing: -0.01em;
+    }
+
+    /* ── Legend ──────────────────────────────────────────────────── */
+    .legend {
+      display: flex;
+      gap: 1.5rem;
+      margin-left: auto;
+      align-items: center;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #d1d5db;
+    }
+    .legend-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 3px;
+      flex-shrink: 0;
+    }
+
+    /* ── Chart card ──────────────────────────────────────────────── */
+    .chart-card {
+      background: #2d2f33;
+      border: 1.5px solid #3a3d44;
+      border-radius: 14px;
+      padding: 1.5rem;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      min-height: 0;
+    }
+
+    .chart-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .chart-title {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: #d1d5db;
+    }
+
+    .totals {
+      display: flex;
+      gap: 1.5rem;
+      flex-wrap: wrap;
+    }
+    .total-item { text-align: right; }
+    .total-value {
+      font-size: 1.3rem;
+      font-weight: 700;
+    }
+    .total-value.y1 { color: #f87171; }
+    .total-value.y2 { color: #6b92e4; }
+    .total-label {
+      font-size: 0.72rem;
+      color: #9ca3af;
+      margin-left: 0.25rem;
+    }
+
+    .chart-wrapper {
+      flex: 1;
+      position: relative;
+      min-height: 300px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="top-bar">
+    <a href="{% url 'recettes' %}" class="btn-back">← Recettes</a>
+
+    <div class="year-nav">
+      {% if has_prev %}
+        <a href="?year={{ year2|add:'-1' }}" class="btn-period">‹</a>
+      {% else %}
+        <span class="btn-period disabled">‹</span>
+      {% endif %}
+
+      <span class="year-label">{{ year1 }} / {{ year2 }}</span>
+
+      {% if has_next %}
+        <a href="?year={{ year2|add:'1' }}" class="btn-period">›</a>
+      {% else %}
+        <span class="btn-period disabled">›</span>
+      {% endif %}
+    </div>
+
+    <div class="legend">
+      <span class="legend-item">
+        <span class="legend-dot" style="background:#f87171"></span>{{ year1 }}
+      </span>
+      <span class="legend-item">
+        <span class="legend-dot" style="background:#6b92e4"></span>{{ year2 }}
+      </span>
+    </div>
+  </div>
+
+  <div class="chart-card">
+    <div class="chart-meta">
+      <span class="chart-title">Comparaison mensuelle {{ year1 }} / {{ year2 }}</span>
+      <div class="totals">
+        <span class="total-item">
+          <span class="total-value y1" id="total-y1">—</span>
+          <span class="total-label">€ en {{ year1 }}</span>
+        </span>
+        <span class="total-item">
+          <span class="total-value y2" id="total-y2">—</span>
+          <span class="total-label">€ en {{ year2 }}</span>
+        </span>
+      </div>
+    </div>
+    <div class="chart-wrapper">
+      <canvas id="compare-chart"></canvas>
+    </div>
+  </div>
+
+<script>
+  const data  = {{ comparison_json|safe }};
+  const year1 = {{ year1 }};
+  const year2 = {{ year2 }};
+
+  // ── Totals ─────────────────────────────────────────────────────
+  function fmt(v) {
+    return v.toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+  document.getElementById("total-y1").textContent =
+    fmt(data.reduce((s, d) => s + d.y1, 0));
+  document.getElementById("total-y2").textContent =
+    fmt(data.reduce((s, d) => s + d.y2, 0));
+
+  // ── Custom plugin: % diff labels above bars ────────────────────
+  const pctPlugin = {
+    id: "pctDiff",
+    afterDatasetsDraw(chart) {
+      const ctx   = chart.ctx;
+      const meta0 = chart.getDatasetMeta(0);  // year1 bars
+      const meta1 = chart.getDatasetMeta(1);  // year2 bars
+
+      ctx.save();
+      ctx.font = "bold 11px 'Segoe UI', system-ui, sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "bottom";
+
+      data.forEach((d, i) => {
+        if (d.pct_diff === null) return;
+
+        const bar0 = meta0.data[i];
+        const bar1 = meta1.data[i];
+        const centerX = (bar0.x + bar1.x) / 2;
+        const topY    = Math.min(bar0.y, bar1.y) - 4;
+
+        const sign = d.pct_diff > 0 ? "+" : "";
+        const text = `${sign}${d.pct_diff}%`;
+        ctx.fillStyle = d.pct_diff > 0 ? "#4ade80"
+                      : d.pct_diff < 0 ? "#f87171"
+                      : "#9ca3af";
+        ctx.fillText(text, centerX, topY);
+      });
+      ctx.restore();
+    }
+  };
+
+  // ── Chart ──────────────────────────────────────────────────────
+  const ctx = document.getElementById("compare-chart").getContext("2d");
+  new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels: data.map(d => d.label),
+      datasets: [
+        {
+          label: String(year1),
+          data: data.map(d => d.y1),
+          backgroundColor: "rgba(248, 113, 113, 0.55)",
+          borderColor: "#f87171",
+          borderWidth: 1.5,
+          borderRadius: 4,
+          hoverBackgroundColor: "rgba(248, 113, 113, 0.85)",
+        },
+        {
+          label: String(year2),
+          data: data.map(d => d.y2),
+          backgroundColor: "rgba(107, 146, 228, 0.55)",
+          borderColor: "#6b92e4",
+          borderWidth: 1.5,
+          borderRadius: 4,
+          hoverBackgroundColor: "rgba(107, 146, 228, 0.85)",
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      layout: { padding: { top: 24 } },   // room for % labels
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => `${ctx.dataset.label} : ${ctx.parsed.y.toFixed(2)} €`
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { color: "rgba(255,255,255,0.06)" },
+          ticks: { color: "#9ca3af", font: { size: 12 } }
+        },
+        y: {
+          grid: { color: "rgba(255,255,255,0.06)" },
+          ticks: {
+            color: "#9ca3af",
+            font: { size: 11 },
+            callback: v => v.toLocaleString("fr-FR") + " €"
+          },
+          beginAtZero: true,
+        }
+      }
+    },
+    plugins: [pctPlugin]
+  });
+</script>
+
+</body>
+</html>

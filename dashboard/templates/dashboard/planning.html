@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Planning — Cabinet Dr Beclin</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #1a1b1e;
+      color: #f8f9fb;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Top bar ─────────────────────────────────────────────────────────── */
+    .topbar {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 1rem 1.5rem;
+      background: #222325;
+      border-bottom: 1px solid #2d2f33;
+      flex-wrap: wrap;
+    }
+
+    .btn-back {
+      background: none;
+      border: 1.5px solid #3a3d44;
+      border-radius: 8px;
+      padding: 0.4rem 0.75rem;
+      font-size: 0.82rem;
+      font-weight: 600;
+      font-family: inherit;
+      color: #9ca3af;
+      cursor: pointer;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      transition: border-color 0.2s, color 0.2s;
+    }
+    .btn-back:hover { border-color: #6b92e4; color: #f8f9fb; }
+
+    .topbar h1 {
+      font-size: 1.1rem;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+    }
+
+    .topbar-spacer { flex: 1; }
+
+    .btn-refresh {
+      background: none;
+      border: 1.5px solid #3a3d44;
+      border-radius: 8px;
+      padding: 0.4rem 0.85rem;
+      font-size: 0.82rem;
+      font-weight: 600;
+      font-family: inherit;
+      color: #9ca3af;
+      cursor: pointer;
+      transition: border-color 0.2s, color 0.2s;
+    }
+    .btn-refresh:hover:not(:disabled) { border-color: #6b92e4; color: #f8f9fb; }
+    .btn-refresh:disabled { opacity: 0.4; cursor: default; }
+
+    /* ── Loading banner ──────────────────────────────────────────────────── */
+    #loading-banner {
+      display: none;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.6rem 1.5rem;
+      background: #2d2f33;
+      border-bottom: 1px solid #3a3d44;
+      font-size: 0.85rem;
+      color: #9ca3af;
+    }
+    #loading-banner.visible { display: flex; }
+    .progress-bar-wrap {
+      flex: 1;
+      max-width: 220px;
+      height: 4px;
+      background: #3a3d44;
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    .progress-bar-fill {
+      height: 100%;
+      background: #6b92e4;
+      transition: width 0.3s;
+    }
+
+    /* ── Navigation ──────────────────────────────────────────────────────── */
+    .nav-bar {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.85rem 1.5rem;
+      background: #222325;
+      border-bottom: 1px solid #2d2f33;
+    }
+
+    .btn-nav {
+      background: none;
+      border: 1.5px solid #3a3d44;
+      border-radius: 8px;
+      padding: 0.35rem 0.75rem;
+      font-size: 0.82rem;
+      font-weight: 700;
+      font-family: inherit;
+      color: #9ca3af;
+      cursor: pointer;
+      text-decoration: none;
+      transition: border-color 0.2s, color 0.2s;
+    }
+    .btn-nav:hover { border-color: #6b92e4; color: #f8f9fb; }
+    .btn-nav.disabled { opacity: 0.25; pointer-events: none; }
+
+    .day-title {
+      font-size: 1rem;
+      font-weight: 600;
+    }
+    .day-jt {
+      font-size: 0.82rem;
+      color: #9ca3af;
+      margin-left: 0.35rem;
+    }
+    .badge {
+      display: inline-block;
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 0.15rem 0.5rem;
+      border-radius: 999px;
+      background: #2d4a24;
+      color: #7fcf6a;
+    }
+    .badge.closed {
+      background: #3a2424;
+      color: #d97070;
+    }
+    .badge.conditional {
+      background: #3a3420;
+      color: #d4b860;
+    }
+
+    /* ── Main content ────────────────────────────────────────────────────── */
+    .content {
+      flex: 1;
+      padding: 1.5rem;
+      overflow: auto;
+    }
+
+    .empty-state {
+      text-align: center;
+      color: #6b7280;
+      margin-top: 4rem;
+      font-size: 0.95rem;
+    }
+
+    /* ── Gantt chart ─────────────────────────────────────────────────────── */
+    .gantt-wrap {
+      overflow-x: auto;
+    }
+
+    .gantt {
+      min-width: 800px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    /* Time header */
+    .gantt-header {
+      display: flex;
+      margin-left: 90px;
+      position: relative;
+      height: 24px;
+      border-bottom: 1px solid #2d2f33;
+      margin-bottom: 6px;
+    }
+    .gantt-tick {
+      position: absolute;
+      transform: translateX(-50%);
+      font-size: 0.7rem;
+      color: #6b7280;
+      white-space: nowrap;
+    }
+
+    /* Row = one fauteuil */
+    .gantt-row {
+      display: flex;
+      align-items: stretch;
+      gap: 0;
+      height: 52px;
+    }
+    .gantt-label {
+      width: 90px;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: #9ca3af;
+      padding-right: 0.5rem;
+    }
+    .gantt-timeline {
+      flex: 1;
+      position: relative;
+      background: #1e2023;
+      border-radius: 6px;
+      overflow: hidden;
+    }
+
+    /* Hour grid lines inside the timeline */
+    .gantt-grid-line {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 1px;
+      background: #2d2f33;
+    }
+
+    /* Individual event block */
+    .gantt-event {
+      position: absolute;
+      top: 4px;
+      bottom: 4px;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.68rem;
+      font-weight: 700;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      cursor: default;
+      border: 1px solid rgba(0,0,0,0.2);
+      transition: filter 0.15s;
+      color: #fff;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+      padding: 0 3px;
+    }
+    .gantt-event:hover { filter: brightness(1.15); z-index: 10; }
+
+    /* Tooltip */
+    .gantt-event[title] { cursor: help; }
+  </style>
+</head>
+<body>
+
+  <!-- Top bar -->
+  <div class="topbar">
+    <a href="{% url 'intra_landing' %}" class="btn-back">← Intranet</a>
+    <h1>Planning</h1>
+    <span class="topbar-spacer"></span>
+    <button class="btn-refresh" id="btn-refresh">Actualiser</button>
+  </div>
+
+  <!-- Loading banner -->
+  <div id="loading-banner">
+    <span id="loading-text">Chargement…</span>
+    <div class="progress-bar-wrap">
+      <div class="progress-bar-fill" id="progress-fill" style="width:0%"></div>
+    </div>
+    <span id="loading-percent">0 %</span>
+  </div>
+
+  <!-- Day navigation -->
+  <div class="nav-bar" id="nav-bar">
+    <a id="btn-prev" href="#" class="btn-nav{% if not prev_date %} disabled{% endif %}">&#8592;</a>
+    <span class="day-title" id="day-label">—</span>
+    <span class="day-jt" id="day-jt-name"></span>
+    <span class="badge" id="day-badge"></span>
+    <span style="flex:1"></span>
+    <a id="btn-next" href="#" class="btn-nav{% if not next_date %} disabled{% endif %}">&#8594;</a>
+  </div>
+
+  <!-- Chart -->
+  <div class="content">
+    <div id="empty-state" class="empty-state" style="display:none">
+      Aucun planning disponible pour ce jour.
+    </div>
+    <div class="gantt-wrap" id="gantt-wrap">
+      <div class="gantt" id="gantt"></div>
+    </div>
+  </div>
+
+  <script>
+    // ── State injected from Django ──────────────────────────────────────────
+    const INITIAL_DATA  = {{ day_data_json|safe }};
+    let   selectedDate  = "{{ selected_date }}";
+    let   prevDate      = {{ prev_date|default:"null"|safe }};
+    let   nextDate      = {{ next_date|default:"null"|safe }};
+
+    const DATA_URL     = "{% url 'planning_data' %}";
+    const REFRESH_URL  = "{% url 'planning_refresh' %}";
+    const STATUS_URL   = "{% url 'planning_loading_status' %}";
+    const CSRF_TOKEN   = "{{ csrf_token }}";
+
+    // ── Loading state ───────────────────────────────────────────────────────
+    let pollTimer = null;
+
+    function showBanner(text, percent) {
+      document.getElementById("loading-banner").classList.add("visible");
+      document.getElementById("loading-text").textContent = text || "Chargement…";
+      document.getElementById("loading-percent").textContent = percent + " %";
+      document.getElementById("progress-fill").style.width = percent + "%";
+      document.getElementById("btn-refresh").disabled = true;
+    }
+
+    function hideBanner() {
+      document.getElementById("loading-banner").classList.remove("visible");
+      document.getElementById("btn-refresh").disabled = false;
+    }
+
+    function startPolling() {
+      if (pollTimer) return;
+      pollTimer = setInterval(async () => {
+        const res  = await fetch(STATUS_URL);
+        const data = await res.json();
+        if (data.loading) {
+          showBanner(data.text, data.percent);
+        } else {
+          clearInterval(pollTimer);
+          pollTimer = null;
+          hideBanner();
+          await loadDay(selectedDate);
+        }
+      }, 1200);
+    }
+
+    // ── Gantt renderer ──────────────────────────────────────────────────────
+    function minutesToHHMM(m) {
+      const h = Math.floor(m / 60);
+      const min = m % 60;
+      return String(h).padStart(2, "0") + "h" + String(min).padStart(2, "0");
+    }
+
+    function renderGantt(data) {
+      const gantt    = document.getElementById("gantt");
+      const emptyDiv = document.getElementById("empty-state");
+      gantt.innerHTML = "";
+
+      if (!data || !data.events || data.events.length === 0) {
+        emptyDiv.style.display = "block";
+        document.getElementById("gantt-wrap").style.display = "none";
+        return;
+      }
+      emptyDiv.style.display = "none";
+      document.getElementById("gantt-wrap").style.display = "";
+
+      const startT = data.start_time;
+      const endT   = data.end_time;
+      const span   = endT - startT || 1;
+
+      // Round to full hours for display
+      const dispStart = Math.floor(startT / 60) * 60;
+      const dispEnd   = Math.ceil(endT   / 60) * 60;
+      const dispSpan  = dispEnd - dispStart || 1;
+
+      // Header
+      const header = document.createElement("div");
+      header.className = "gantt-header";
+      for (let t = dispStart; t <= dispEnd; t += 60) {
+        const tick = document.createElement("div");
+        tick.className = "gantt-tick";
+        tick.style.left = ((t - dispStart) / dispSpan * 100) + "%";
+        tick.textContent = minutesToHHMM(t);
+        header.appendChild(tick);
+      }
+      gantt.appendChild(header);
+
+      // Group events by fauteuil
+      const byFauteuil = {};
+      for (const evt of data.events) {
+        (byFauteuil[evt.fauteuil] = byFauteuil[evt.fauteuil] || []).push(evt);
+      }
+
+      for (const fauteuil of data.fauteils) {
+        const row = document.createElement("div");
+        row.className = "gantt-row";
+
+        const label = document.createElement("div");
+        label.className = "gantt-label";
+        label.textContent = "Fauteuil " + (parseInt(fauteuil) + 1);
+        row.appendChild(label);
+
+        const timeline = document.createElement("div");
+        timeline.className = "gantt-timeline";
+
+        // Hour grid lines
+        for (let t = dispStart; t <= dispEnd; t += 60) {
+          const line = document.createElement("div");
+          line.className = "gantt-grid-line";
+          line.style.left = ((t - dispStart) / dispSpan * 100) + "%";
+          timeline.appendChild(line);
+        }
+
+        // Events
+        for (const evt of (byFauteuil[fauteuil] || [])) {
+          const leftPct  = (evt.startminutes - dispStart) / dispSpan * 100;
+          const widthPct = evt.duration                   / dispSpan * 100;
+
+          const block = document.createElement("div");
+          block.className = "gantt-event";
+          block.style.left       = leftPct + "%";
+          block.style.width      = widthPct + "%";
+          block.style.background = evt.color;
+          block.textContent      = evt.value;
+          block.title = [
+            evt.value,
+            minutesToHHMM(evt.startminutes) + " – " + minutesToHHMM(evt.startminutes + evt.duration),
+            evt.duration + " min",
+            evt.as1 ? "Asst début " + evt.as1 + " min" : "",
+            evt.as2 ? "Asst fin "   + evt.as2 + " min" : "",
+            evt.dr  ? "Dr "         + evt.dr  + " min" : "",
+          ].filter(Boolean).join("\n");
+          timeline.appendChild(block);
+        }
+        row.appendChild(timeline);
+        gantt.appendChild(row);
+      }
+    }
+
+    // ── Navigation helpers ──────────────────────────────────────────────────
+    function badgeClass(status) {
+      if (status === "Ouvert") return "badge";
+      if (status && status.startsWith("En fonction")) return "badge conditional";
+      return "badge closed";
+    }
+
+    function updateNavBar(data) {
+      document.getElementById("day-label").textContent   = data ? data.label  : selectedDate;
+      document.getElementById("day-jt-name").textContent = data && data.jt_name ? "— " + data.jt_name : "";
+      const badge = document.getElementById("day-badge");
+      badge.textContent  = data ? data.status : "";
+      badge.className    = data ? badgeClass(data.status) : "badge";
+    }
+
+    function updateNavButtons() {
+      const prev = document.getElementById("btn-prev");
+      const next = document.getElementById("btn-next");
+      if (prevDate) {
+        prev.href = "?date=" + prevDate;
+        prev.classList.remove("disabled");
+      } else {
+        prev.href = "#";
+        prev.classList.add("disabled");
+      }
+      if (nextDate) {
+        next.href = "?date=" + nextDate;
+        next.classList.remove("disabled");
+      } else {
+        next.href = "#";
+        next.classList.add("disabled");
+      }
+    }
+
+    // ── Load a day via API ──────────────────────────────────────────────────
+    async function loadDay(dateStr) {
+      const res  = await fetch(DATA_URL + "?date=" + dateStr);
+      if (!res.ok) return;
+      const json = await res.json();
+      selectedDate = dateStr;
+      prevDate     = json.prev_date;
+      nextDate     = json.next_date;
+      updateNavBar(json.day);
+      updateNavButtons();
+      renderGantt(json.day);
+      history.replaceState(null, "", "?date=" + dateStr);
+    }
+
+    // ── SPA navigation (intercept nav button clicks) ────────────────────────
+    document.getElementById("btn-prev").addEventListener("click", async (e) => {
+      if (!prevDate) return;
+      e.preventDefault();
+      await loadDay(prevDate);
+    });
+    document.getElementById("btn-next").addEventListener("click", async (e) => {
+      if (!nextDate) return;
+      e.preventDefault();
+      await loadDay(nextDate);
+    });
+
+    // ── Refresh button ──────────────────────────────────────────────────────
+    document.getElementById("btn-refresh").addEventListener("click", async () => {
+      const res = await fetch(REFRESH_URL, {
+        method: "POST",
+        headers: { "X-CSRFToken": CSRF_TOKEN },
+      });
+      if (res.ok) startPolling();
+    });
+
+    // ── Keyboard navigation ─────────────────────────────────────────────────
+    document.addEventListener("keydown", async (e) => {
+      if (e.key === "ArrowLeft"  && prevDate) { e.preventDefault(); await loadDay(prevDate); }
+      if (e.key === "ArrowRight" && nextDate) { e.preventDefault(); await loadDay(nextDate); }
+    });
+
+    // ── Initial render ──────────────────────────────────────────────────────
+    (function init() {
+      updateNavBar(INITIAL_DATA);
+      updateNavButtons();
+      renderGantt(INITIAL_DATA);
+
+      {% if is_loading %}
+      showBanner("{{ loading_text }}", {{ loading_percent }});
+      startPolling();
+      {% endif %}
+    })();
+  </script>
+</body>
+</html>
