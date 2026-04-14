@@ -385,7 +385,7 @@ def _run_planning_refresh() -> None:
     except Exception as exc:
         loading_state.update(False, "", 0, error=str(exc), name="planning")
     finally:
-        with _planning_refresh_lock:
+         with _planning_refresh_lock:
             _planning_refresh_thread = None
 
 
@@ -425,8 +425,8 @@ def planning_view(request):
     return render(request, "dashboard/planning.html", {
         "day_data_json":  json.dumps(day_data),
         "selected_date":  selected_date.isoformat(),
-        "prev_date":      prev_date.isoformat() if prev_date else None,
-        "next_date":      next_date.isoformat() if next_date else None,
+        "prev_date_json": json.dumps(prev_date.isoformat() if prev_date else None),
+        "next_date_json": json.dumps(next_date.isoformat() if next_date else None),
         "is_loading":     state["loading"],
         "loading_text":   state["text"],
         "loading_percent": state["percent"],

@@ -99,3 +99,26 @@ class CalendarDay(models.Model):
 
     def __str__(self):
         return f"{self.label} — {self.status}"
+
+
+class AppointmentRecord(models.Model):
+    """
+    Real appointment from OrthoAdvance rdvs_history.
+    Fully replaced on each planning refresh.
+    """
+    date          = models.DateField()
+    startminutes  = models.IntegerField(help_text="Start time in minutes from midnight")
+    duration      = models.IntegerField(default=0, help_text="Duration in minutes")
+    patient_name  = models.CharField(max_length=255)
+    patient_id    = models.CharField(max_length=100, blank=True)
+    praticien_name = models.CharField(max_length=255)
+    praticien_id  = models.CharField(max_length=100, blank=True)
+    plage_planning = models.CharField(max_length=100)
+    fauteuil      = models.IntegerField(null=True, blank=True)
+    color         = models.CharField(max_length=20, default="#888888")
+
+    class Meta:
+        indexes = [models.Index(fields=["date"])]
+
+    def __str__(self):
+        return f"{self.date} {self.startminutes}min — {self.patient_name}"

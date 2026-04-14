@@ -21,12 +21,11 @@
       display: flex;
       align-items: center;
       gap: 1rem;
-      padding: 1rem 1.5rem;
+      padding: 0.85rem 1.5rem;
       background: #222325;
       border-bottom: 1px solid #2d2f33;
       flex-wrap: wrap;
     }
-
     .btn-back {
       background: none;
       border: 1.5px solid #3a3d44;
@@ -38,20 +37,11 @@
       color: #9ca3af;
       cursor: pointer;
       text-decoration: none;
-      display: flex;
-      align-items: center;
       transition: border-color 0.2s, color 0.2s;
     }
     .btn-back:hover { border-color: #6b92e4; color: #f8f9fb; }
-
-    .topbar h1 {
-      font-size: 1.1rem;
-      font-weight: 700;
-      letter-spacing: -0.01em;
-    }
-
+    .topbar h1 { font-size: 1.1rem; font-weight: 700; letter-spacing: -0.01em; }
     .topbar-spacer { flex: 1; }
-
     .btn-refresh {
       background: none;
       border: 1.5px solid #3a3d44;
@@ -72,42 +62,33 @@
       display: none;
       align-items: center;
       gap: 0.75rem;
-      padding: 0.6rem 1.5rem;
+      padding: 0.55rem 1.5rem;
       background: #2d2f33;
       border-bottom: 1px solid #3a3d44;
-      font-size: 0.85rem;
+      font-size: 0.83rem;
       color: #9ca3af;
     }
     #loading-banner.visible { display: flex; }
     .progress-bar-wrap {
-      flex: 1;
-      max-width: 220px;
-      height: 4px;
-      background: #3a3d44;
-      border-radius: 2px;
-      overflow: hidden;
+      flex: 1; max-width: 220px; height: 4px;
+      background: #3a3d44; border-radius: 2px; overflow: hidden;
     }
-    .progress-bar-fill {
-      height: 100%;
-      background: #6b92e4;
-      transition: width 0.3s;
-    }
+    .progress-bar-fill { height: 100%; background: #6b92e4; transition: width 0.3s; }
 
     /* ── Navigation ──────────────────────────────────────────────────────── */
     .nav-bar {
       display: flex;
       align-items: center;
       gap: 0.75rem;
-      padding: 0.85rem 1.5rem;
+      padding: 0.75rem 1.5rem;
       background: #222325;
       border-bottom: 1px solid #2d2f33;
     }
-
     .btn-nav {
       background: none;
       border: 1.5px solid #3a3d44;
       border-radius: 8px;
-      padding: 0.35rem 0.75rem;
+      padding: 0.3rem 0.7rem;
       font-size: 0.82rem;
       font-weight: 700;
       font-family: inherit;
@@ -118,136 +99,160 @@
     }
     .btn-nav:hover { border-color: #6b92e4; color: #f8f9fb; }
     .btn-nav.disabled { opacity: 0.25; pointer-events: none; }
-
-    .day-title {
-      font-size: 1rem;
-      font-weight: 600;
-    }
-    .day-jt {
-      font-size: 0.82rem;
-      color: #9ca3af;
-      margin-left: 0.35rem;
-    }
+    .day-title { font-size: 1rem; font-weight: 600; }
+    .day-jt { font-size: 0.8rem; color: #9ca3af; margin-left: 0.25rem; }
     .badge {
-      display: inline-block;
-      font-size: 0.72rem;
-      font-weight: 700;
-      padding: 0.15rem 0.5rem;
-      border-radius: 999px;
-      background: #2d4a24;
-      color: #7fcf6a;
+      display: inline-block; font-size: 0.7rem; font-weight: 700;
+      padding: 0.12rem 0.45rem; border-radius: 999px;
+      background: #2d4a24; color: #7fcf6a;
     }
-    .badge.closed {
-      background: #3a2424;
-      color: #d97070;
+    .badge.closed     { background: #3a2424; color: #d97070; }
+    .badge.conditional { background: #3a3420; color: #d4b860; }
+
+    /* ── Legend ──────────────────────────────────────────────────────────── */
+    .legend {
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+      padding: 0.55rem 1.5rem 0.55rem calc(1.5rem + 90px + 32px);
+      background: #1a1b1e;
+      border-bottom: 1px solid #222325;
+      font-size: 0.75rem;
+      color: #6b7280;
     }
-    .badge.conditional {
-      background: #3a3420;
-      color: #d4b860;
+    .legend-item { display: flex; align-items: center; gap: 0.35rem; }
+    .legend-swatch {
+      width: 14px; height: 10px; border-radius: 3px;
     }
+    .legend-swatch--jt   { background: #6b92e4; opacity: 0.9; }
+    .legend-swatch--real { background: #4caf7d; opacity: 0.85; }
+    .legend-swatch--miss { background: rgba(220, 60, 60, 0.75); }
+    .legend-swatch--extra { background: rgba(230, 140, 30, 0.75); }
 
     /* ── Main content ────────────────────────────────────────────────────── */
-    .content {
-      flex: 1;
-      padding: 1.5rem;
-      overflow: auto;
-    }
+    .content { flex: 1; padding: 1.25rem 1.5rem; overflow: auto; }
 
     .empty-state {
-      text-align: center;
-      color: #6b7280;
-      margin-top: 4rem;
-      font-size: 0.95rem;
+      text-align: center; color: #6b7280; margin-top: 4rem; font-size: 0.95rem;
     }
 
     /* ── Gantt chart ─────────────────────────────────────────────────────── */
-    .gantt-wrap {
-      overflow-x: auto;
+    .gantt-wrap { overflow-x: auto; }
+    .gantt      { min-width: 820px; display: flex; flex-direction: column; gap: 0; }
+
+    /* Time header */
+    .gantt-header {
+      display: flex;
+      margin-left: calc(90px + 32px);   /* label + sub-label columns */
+      position: relative;
+      height: 22px;
+      margin-bottom: 8px;
+    }
+    .gantt-tick {
+      position: absolute;
+      transform: translateX(-50%);
+      font-size: 0.68rem;
+      color: #6b7280;
+      white-space: nowrap;
     }
 
-    .gantt {
-      min-width: 800px;
+    /* One fauteuil = label + 3 rows */
+    .gantt-group {
+      display: flex;
+      align-items: stretch;
+      margin-bottom: 10px;
+    }
+    .gantt-group-label {
+      width: 90px;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      padding-right: 0.6rem;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: #9ca3af;
+    }
+    .gantt-group-rows {
+      flex: 1;
       display: flex;
       flex-direction: column;
       gap: 2px;
     }
 
-    /* Time header */
-    .gantt-header {
-      display: flex;
-      margin-left: 90px;
-      position: relative;
-      height: 24px;
-      border-bottom: 1px solid #2d2f33;
-      margin-bottom: 6px;
-    }
-    .gantt-tick {
-      position: absolute;
-      transform: translateX(-50%);
-      font-size: 0.7rem;
-      color: #6b7280;
-      white-space: nowrap;
-    }
-
-    /* Row = one fauteuil */
+    /* Each row = sub-label + timeline */
     .gantt-row {
       display: flex;
       align-items: stretch;
-      gap: 0;
-      height: 52px;
     }
-    .gantt-label {
-      width: 90px;
+    .gantt-sub-label {
+      width: 32px;
       flex-shrink: 0;
       display: flex;
       align-items: center;
-      font-size: 0.78rem;
-      font-weight: 600;
-      color: #9ca3af;
-      padding-right: 0.5rem;
+      justify-content: flex-end;
+      padding-right: 5px;
+      font-size: 0.6rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      color: #4b5263;
+      text-transform: uppercase;
     }
     .gantt-timeline {
       flex: 1;
       position: relative;
-      background: #1e2023;
-      border-radius: 6px;
+      border-radius: 5px;
       overflow: hidden;
     }
 
-    /* Hour grid lines inside the timeline */
+    /* Row heights */
+    .gantt-row--jt   .gantt-timeline { height: 44px; background: #1e2023; }
+    .gantt-row--real .gantt-timeline { height: 44px; background: #1c2120; }
+    .gantt-row--diff .gantt-timeline { height: 14px; background: transparent; }
+
+    /* Hour grid lines */
     .gantt-grid-line {
-      position: absolute;
-      top: 0;
-      bottom: 0;
-      width: 1px;
-      background: #2d2f33;
+      position: absolute; top: 0; bottom: 0; width: 1px; background: #2d2f33;
     }
 
-    /* Individual event block */
+    /* ── Event blocks ────────────────────────────────────────────────────── */
     .gantt-event {
       position: absolute;
-      top: 4px;
-      bottom: 4px;
+      top: 4px; bottom: 4px;
       border-radius: 4px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 0.68rem;
+      font-size: 0.66rem;
       font-weight: 700;
       overflow: hidden;
       white-space: nowrap;
       text-overflow: ellipsis;
+      padding: 0 4px;
       cursor: default;
-      border: 1px solid rgba(0,0,0,0.2);
-      transition: filter 0.15s;
+      border: 1px solid rgba(0,0,0,0.25);
       color: #fff;
-      text-shadow: 0 1px 2px rgba(0,0,0,0.5);
-      padding: 0 3px;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.55);
+      transition: filter 0.15s;
     }
-    .gantt-event:hover { filter: brightness(1.15); z-index: 10; }
+    .gantt-event:hover { filter: brightness(1.18); z-index: 10; }
 
-    /* Tooltip */
-    .gantt-event[title] { cursor: help; }
+    /* Real appointments: slightly outlined */
+    .gantt-event--real {
+      border: 1.5px solid rgba(255,255,255,0.3);
+      filter: brightness(0.85) saturate(0.7);
+    }
+    .gantt-event--real:hover { filter: brightness(1.05) saturate(0.9); }
+
+    /* Diff row blocks */
+    .gantt-event--diff {
+      top: 1px; bottom: 1px;
+      border-radius: 3px;
+      border: none;
+      font-size: 0;     /* no text */
+    }
+    .gantt-event--diff-missing { background: rgba(220, 55, 55, 0.75); }
+    .gantt-event--diff-extra   { background: rgba(230, 140, 30, 0.75); }
   </style>
 </head>
 <body>
@@ -270,13 +275,29 @@
   </div>
 
   <!-- Day navigation -->
-  <div class="nav-bar" id="nav-bar">
+  <div class="nav-bar">
     <a id="btn-prev" href="#" class="btn-nav{% if not prev_date %} disabled{% endif %}">&#8592;</a>
     <span class="day-title" id="day-label">—</span>
     <span class="day-jt" id="day-jt-name"></span>
     <span class="badge" id="day-badge"></span>
     <span style="flex:1"></span>
     <a id="btn-next" href="#" class="btn-nav{% if not next_date %} disabled{% endif %}">&#8594;</a>
+  </div>
+
+  <!-- Legend -->
+  <div class="legend">
+    <div class="legend-item">
+      <div class="legend-swatch legend-swatch--jt"></div> Journée type
+    </div>
+    <div class="legend-item">
+      <div class="legend-swatch legend-swatch--real"></div> Rendez-vous réels
+    </div>
+    <div class="legend-item">
+      <div class="legend-swatch legend-swatch--miss"></div> Manquant
+    </div>
+    <div class="legend-item">
+      <div class="legend-swatch legend-swatch--extra"></div> Hors planning
+    </div>
   </div>
 
   <!-- Chart -->
@@ -290,16 +311,16 @@
   </div>
 
   <script>
-    // ── State injected from Django ──────────────────────────────────────────
-    const INITIAL_DATA  = {{ day_data_json|safe }};
-    let   selectedDate  = "{{ selected_date }}";
-    let   prevDate      = {{ prev_date|default:"null"|safe }};
-    let   nextDate      = {{ next_date|default:"null"|safe }};
+    // ── Data from Django ────────────────────────────────────────────────────
+    const INITIAL_DATA = {{ day_data_json|safe }};
+    let selectedDate   = "{{ selected_date }}";
+    let prevDate       = {{ prev_date_json|safe }};
+    let nextDate       = {{ next_date_json|safe }};
 
-    const DATA_URL     = "{% url 'planning_data' %}";
-    const REFRESH_URL  = "{% url 'planning_refresh' %}";
-    const STATUS_URL   = "{% url 'planning_loading_status' %}";
-    const CSRF_TOKEN   = "{{ csrf_token }}";
+    const DATA_URL    = "{% url 'planning_data' %}";
+    const REFRESH_URL = "{% url 'planning_refresh' %}";
+    const STATUS_URL  = "{% url 'planning_loading_status' %}";
+    const CSRF_TOKEN  = "{{ csrf_token }}";
 
     // ── Loading state ───────────────────────────────────────────────────────
     let pollTimer = null;
@@ -311,12 +332,10 @@
       document.getElementById("progress-fill").style.width = percent + "%";
       document.getElementById("btn-refresh").disabled = true;
     }
-
     function hideBanner() {
       document.getElementById("loading-banner").classList.remove("visible");
       document.getElementById("btn-refresh").disabled = false;
     }
-
     function startPolling() {
       if (pollTimer) return;
       pollTimer = setInterval(async () => {
@@ -333,19 +352,48 @@
       }, 1200);
     }
 
-    // ── Gantt renderer ──────────────────────────────────────────────────────
-    function minutesToHHMM(m) {
-      const h = Math.floor(m / 60);
-      const min = m % 60;
-      return String(h).padStart(2, "0") + "h" + String(min).padStart(2, "0");
+    // ── Helpers ─────────────────────────────────────────────────────────────
+    function toHHMM(m) {
+      return String(Math.floor(m / 60)).padStart(2, "0") + "h"
+           + String(m % 60).padStart(2, "0");
     }
 
+    function makeTimeline() {
+      const tl = document.createElement("div");
+      tl.className = "gantt-timeline";
+      return tl;
+    }
+
+    function addGridLines(timeline, dispStart, dispEnd, dispSpan) {
+      for (let t = dispStart; t <= dispEnd; t += 60) {
+        const line = document.createElement("div");
+        line.className = "gantt-grid-line";
+        line.style.left = ((t - dispStart) / dispSpan * 100) + "%";
+        timeline.appendChild(line);
+      }
+    }
+
+    function makeEventBlock(leftPct, widthPct, color, text, title, extraClass) {
+      const el = document.createElement("div");
+      el.className = "gantt-event" + (extraClass ? " " + extraClass : "");
+      el.style.left       = leftPct  + "%";
+      el.style.width      = widthPct + "%";
+      el.style.background = color;
+      el.textContent      = text;
+      if (title) el.title = title;
+      return el;
+    }
+
+    // ── Gantt renderer ──────────────────────────────────────────────────────
     function renderGantt(data) {
       const gantt    = document.getElementById("gantt");
       const emptyDiv = document.getElementById("empty-state");
       gantt.innerHTML = "";
 
-      if (!data || !data.events || data.events.length === 0) {
+      const hasEvents = data && data.events && data.events.length > 0;
+      const hasAppts  = data && data.appointments && data.appointments.length > 0;
+
+      if (!hasEvents && !hasAppts) {
         emptyDiv.style.display = "block";
         document.getElementById("gantt-wrap").style.display = "none";
         return;
@@ -355,74 +403,163 @@
 
       const startT = data.start_time;
       const endT   = data.end_time;
-      const span   = endT - startT || 1;
-
-      // Round to full hours for display
       const dispStart = Math.floor(startT / 60) * 60;
       const dispEnd   = Math.ceil(endT   / 60) * 60;
-      const dispSpan  = dispEnd - dispStart || 1;
+      const dispSpan  = (dispEnd - dispStart) || 1;
 
-      // Header
+      // ── Time header ───────────────────────────────────────────────────────
       const header = document.createElement("div");
       header.className = "gantt-header";
       for (let t = dispStart; t <= dispEnd; t += 60) {
         const tick = document.createElement("div");
         tick.className = "gantt-tick";
         tick.style.left = ((t - dispStart) / dispSpan * 100) + "%";
-        tick.textContent = minutesToHHMM(t);
+        tick.textContent = toHHMM(t);
         header.appendChild(tick);
       }
       gantt.appendChild(header);
 
-      // Group events by fauteuil
-      const byFauteuil = {};
-      for (const evt of data.events) {
-        (byFauteuil[evt.fauteuil] = byFauteuil[evt.fauteuil] || []).push(evt);
+      // ── Group events/appointments/diffs by fauteuil ───────────────────────
+      const eventsByF = {};
+      const apptsByF  = {};
+      const diffsByF  = {};
+
+      for (const evt  of (data.events       || [])) (eventsByF[evt.fauteuil]  = eventsByF[evt.fauteuil]  || []).push(evt);
+      for (const appt of (data.appointments || [])) {
+        const f = appt.fauteuil ?? "__unassigned__";
+        (apptsByF[f] = apptsByF[f] || []).push(appt);
       }
+      for (const d of (data.diffs || [])) (diffsByF[d.fauteuil]  = diffsByF[d.fauteuil]  || []).push(d);
 
-      for (const fauteuil of data.fauteils) {
-        const row = document.createElement("div");
-        row.className = "gantt-row";
+      // ── Fauteuil rows ─────────────────────────────────────────────────────
+      for (const fauteuil of (data.fauteils || [])) {
+        const group = document.createElement("div");
+        group.className = "gantt-group";
 
-        const label = document.createElement("div");
-        label.className = "gantt-label";
-        label.textContent = "Fauteuil " + (parseInt(fauteuil) + 1);
-        row.appendChild(label);
+        // Label (spans all 3 rows)
+        const lbl = document.createElement("div");
+        lbl.className   = "gantt-group-label";
+        lbl.textContent = "Fauteuil " + (parseInt(fauteuil) + 1);
+        group.appendChild(lbl);
 
-        const timeline = document.createElement("div");
-        timeline.className = "gantt-timeline";
+        const rows = document.createElement("div");
+        rows.className = "gantt-group-rows";
 
-        // Hour grid lines
-        for (let t = dispStart; t <= dispEnd; t += 60) {
-          const line = document.createElement("div");
-          line.className = "gantt-grid-line";
-          line.style.left = ((t - dispStart) / dispSpan * 100) + "%";
-          timeline.appendChild(line);
-        }
+        // ── Row 1 : JT events ─────────────────────────────────────────────
+        const rowJT = document.createElement("div");
+        rowJT.className = "gantt-row gantt-row--jt";
 
-        // Events
-        for (const evt of (byFauteuil[fauteuil] || [])) {
-          const leftPct  = (evt.startminutes - dispStart) / dispSpan * 100;
-          const widthPct = evt.duration                   / dispSpan * 100;
+        const subJT = document.createElement("div");
+        subJT.className = "gantt-sub-label";
+        subJT.textContent = "JT";
+        rowJT.appendChild(subJT);
 
-          const block = document.createElement("div");
-          block.className = "gantt-event";
-          block.style.left       = leftPct + "%";
-          block.style.width      = widthPct + "%";
-          block.style.background = evt.color;
-          block.textContent      = evt.value;
-          block.title = [
+        const tlJT = makeTimeline();
+        addGridLines(tlJT, dispStart, dispEnd, dispSpan);
+
+        for (const evt of (eventsByF[fauteuil] || [])) {
+          const lp = (evt.startminutes - dispStart) / dispSpan * 100;
+          const wp = evt.duration                   / dispSpan * 100;
+          const title = [
             evt.value,
-            minutesToHHMM(evt.startminutes) + " – " + minutesToHHMM(evt.startminutes + evt.duration),
+            toHHMM(evt.startminutes) + " – " + toHHMM(evt.startminutes + evt.duration),
             evt.duration + " min",
             evt.as1 ? "Asst début " + evt.as1 + " min" : "",
             evt.as2 ? "Asst fin "   + evt.as2 + " min" : "",
             evt.dr  ? "Dr "         + evt.dr  + " min" : "",
           ].filter(Boolean).join("\n");
-          timeline.appendChild(block);
+          tlJT.appendChild(makeEventBlock(lp, wp, evt.color, evt.value, title, ""));
         }
-        row.appendChild(timeline);
-        gantt.appendChild(row);
+        rowJT.appendChild(tlJT);
+        rows.appendChild(rowJT);
+
+        // ── Row 2 : Real appointments ─────────────────────────────────────
+        const rowReal = document.createElement("div");
+        rowReal.className = "gantt-row gantt-row--real";
+
+        const subReal = document.createElement("div");
+        subReal.className = "gantt-sub-label";
+        subReal.textContent = "Réel";
+        rowReal.appendChild(subReal);
+
+        const tlReal = makeTimeline();
+        addGridLines(tlReal, dispStart, dispEnd, dispSpan);
+
+        for (const appt of (apptsByF[fauteuil] || [])) {
+          const lp = (appt.startminutes - dispStart) / dispSpan * 100;
+          const wp = (appt.duration || 25)           / dispSpan * 100;
+          const title = [
+            appt.plage_planning,
+            toHHMM(appt.startminutes) + " – " + toHHMM(appt.startminutes + (appt.duration || 25)),
+            appt.patient_name,
+            appt.praticien_name ? "Dr " + appt.praticien_name : "",
+          ].filter(Boolean).join("\n");
+          const label = appt.patient_name.split(" ")[0] || appt.plage_planning;
+          tlReal.appendChild(makeEventBlock(lp, wp, appt.color, label, title, "gantt-event--real"));
+        }
+        rowReal.appendChild(tlReal);
+        rows.appendChild(rowReal);
+
+        // ── Row 3 : Diff ──────────────────────────────────────────────────
+        const rowDiff = document.createElement("div");
+        rowDiff.className = "gantt-row gantt-row--diff";
+
+        const subDiff = document.createElement("div");
+        subDiff.className = "gantt-sub-label";
+        subDiff.textContent = "±";
+        rowDiff.appendChild(subDiff);
+
+        const tlDiff = makeTimeline();
+
+        for (const d of (diffsByF[fauteuil] || [])) {
+          const lp = (d.startminutes - dispStart) / dispSpan * 100;
+          const wp = d.duration                   / dispSpan * 100;
+          const cls = d.type === "missing" ? "gantt-event--diff gantt-event--diff-missing"
+                                           : "gantt-event--diff gantt-event--diff-extra";
+          const tip = d.type === "missing" ? "Manquant : " + toHHMM(d.startminutes)
+                                           : "Hors planning : " + toHHMM(d.startminutes);
+          tlDiff.appendChild(makeEventBlock(lp, wp, "", "", tip, cls));
+        }
+        rowDiff.appendChild(tlDiff);
+        rows.appendChild(rowDiff);
+
+        group.appendChild(rows);
+        gantt.appendChild(group);
+      }
+
+      // ── Unassigned appointments (no fauteuil match) ───────────────────────
+      const unassigned = apptsByF["__unassigned__"];
+      if (unassigned && unassigned.length > 0) {
+        const group = document.createElement("div");
+        group.className = "gantt-group";
+        const lbl = document.createElement("div");
+        lbl.className   = "gantt-group-label";
+        lbl.textContent = "Non assigné";
+        lbl.style.color = "#6b7280";
+        lbl.style.fontSize = "0.72rem";
+        group.appendChild(lbl);
+
+        const rows = document.createElement("div");
+        rows.className = "gantt-group-rows";
+        const rowReal = document.createElement("div");
+        rowReal.className = "gantt-row gantt-row--real";
+        const subReal = document.createElement("div");
+        subReal.className = "gantt-sub-label";
+        subReal.textContent = "Réel";
+        rowReal.appendChild(subReal);
+        const tlReal = makeTimeline();
+        addGridLines(tlReal, dispStart, dispEnd, dispSpan);
+        for (const appt of unassigned) {
+          const lp = (appt.startminutes - dispStart) / dispSpan * 100;
+          const wp = (appt.duration || 25)           / dispSpan * 100;
+          const title = [appt.plage_planning, toHHMM(appt.startminutes), appt.patient_name].filter(Boolean).join("\n");
+          const label = appt.patient_name.split(" ")[0] || appt.plage_planning;
+          tlReal.appendChild(makeEventBlock(lp, wp, appt.color, label, title, "gantt-event--real"));
+        }
+        rowReal.appendChild(tlReal);
+        rows.appendChild(rowReal);
+        group.appendChild(rows);
+        gantt.appendChild(group);
       }
     }
 
@@ -437,32 +574,22 @@
       document.getElementById("day-label").textContent   = data ? data.label  : selectedDate;
       document.getElementById("day-jt-name").textContent = data && data.jt_name ? "— " + data.jt_name : "";
       const badge = document.getElementById("day-badge");
-      badge.textContent  = data ? data.status : "";
-      badge.className    = data ? badgeClass(data.status) : "badge";
+      badge.textContent = data ? data.status : "";
+      badge.className   = data ? badgeClass(data.status) : "badge";
     }
 
     function updateNavButtons() {
       const prev = document.getElementById("btn-prev");
       const next = document.getElementById("btn-next");
-      if (prevDate) {
-        prev.href = "?date=" + prevDate;
-        prev.classList.remove("disabled");
-      } else {
-        prev.href = "#";
-        prev.classList.add("disabled");
-      }
-      if (nextDate) {
-        next.href = "?date=" + nextDate;
-        next.classList.remove("disabled");
-      } else {
-        next.href = "#";
-        next.classList.add("disabled");
-      }
+      prev.href = prevDate ? "?date=" + prevDate : "#";
+      prev.classList.toggle("disabled", !prevDate);
+      next.href = nextDate ? "?date=" + nextDate : "#";
+      next.classList.toggle("disabled", !nextDate);
     }
 
     // ── Load a day via API ──────────────────────────────────────────────────
     async function loadDay(dateStr) {
-      const res  = await fetch(DATA_URL + "?date=" + dateStr);
+      const res = await fetch(DATA_URL + "?date=" + dateStr);
       if (!res.ok) return;
       const json = await res.json();
       selectedDate = dateStr;
@@ -474,7 +601,7 @@
       history.replaceState(null, "", "?date=" + dateStr);
     }
 
-    // ── SPA navigation (intercept nav button clicks) ────────────────────────
+    // ── Navigation clicks ───────────────────────────────────────────────────
     document.getElementById("btn-prev").addEventListener("click", async (e) => {
       if (!prevDate) return;
       e.preventDefault();
@@ -501,12 +628,11 @@
       if (e.key === "ArrowRight" && nextDate) { e.preventDefault(); await loadDay(nextDate); }
     });
 
-    // ── Initial render ──────────────────────────────────────────────────────
+    // ── Init ────────────────────────────────────────────────────────────────
     (function init() {
       updateNavBar(INITIAL_DATA);
       updateNavButtons();
       renderGantt(INITIAL_DATA);
-
       {% if is_loading %}
       showBanner("{{ loading_text }}", {{ loading_percent }});
       startPolling();
