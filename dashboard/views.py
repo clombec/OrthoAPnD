@@ -26,9 +26,10 @@ from .services import (
     SORTABLE_FIELDS,
     is_planning_data_available,
     refresh_planning_from_external,
-    get_day_planning,
+    get_day_planning_with_jt,
+    get_jt_list,
     get_adjacent_dates,
-    get_nearest_working_day,
+    get_nearest_date,
 )
 
 # Column definitions: (field_name, display_label)
@@ -413,22 +414,27 @@ def planning_view(request):
         try:
             selected_date = datetime.strptime(date_str, "%Y-%m-%d").date()
         except ValueError:
-            selected_date = get_nearest_working_day(today) or today
+            selected_date = get_nearest_date(today) or today
     else:
-        selected_date = get_nearest_working_day(today) or today
+        selected_date = get_nearest_date(today) or today
 
-    day_data = get_day_planning(selected_date)
+    jt_names = get_jt_list()
+    selected_jt = request.GET.get("jt", "") or None
+
+    day_data = get_day_planning_with_jt(selected_date, jt_name=selected_jt)
     prev_date, next_date = get_adjacent_dates(selected_date)
 
     state = loading_state.get(name="planning")
 
-    return render(request, "dashboard/planning.html", {
-        "day_data_json":  json.dumps(day_data),
-        "selected_date":  selected_date.isoformat(),
-        "prev_date_json": json.dumps(prev_date.isoformat() if prev_date else None),
-        "next_date_json": json.dumps(next_date.isoformat() if next_date else None),
-        "is_loading":     state["loading"],
-        "loading_text":   state["text"],
+    return render(request, "dashboard/calendar.html", {
+        "day_data_json":   json.dumps(day_data),
+        "selected_date":   selected_date.isoformat(),
+        "prev_date_json":  json.dumps(prev_date.isoformat() if prev_date else None),
+        "next_date_json":  json.dumps(next_date.isoformat() if next_date else None),
+        "jt_names_json":   json.dumps(jt_names),
+        "selected_jt":     selected_jt or "",
+        "is_loading":      state["loading"],
+        "loading_text":    state["text"],
         "loading_percent": state["percent"],
     })
 
@@ -450,6 +456,8 @@ def planning_loading_status_view(request):
 @require_intra_auth
 def planning_data_view(request):
     from datetime import datetime
+
+    # Day mode: ?date=YYYY-MM-DD[&jt=<name>]
     date_str = request.GET.get("date", "")
     if not date_str:
         return JsonResponse({"error": "date parameter required"}, status=400)
@@ -458,10 +466,8 @@ def planning_data_view(request):
     except ValueError:
         return JsonResponse({"error": "invalid date format, expected YYYY-MM-DD"}, status=400)
 
-    data = get_day_planning(day_date)
-    if data is None:
-        return JsonResponse({"error": "date not found"}, status=404)
-
+    jt_name = request.GET.get("jt", "") or None
+    data = get_day_planning_with_jt(day_date, jt_name=jt_name)
     prev_date, next_date = get_adjacent_dates(day_date)
     return JsonResponse({
         "day": data,

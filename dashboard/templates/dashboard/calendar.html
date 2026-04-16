@@ -1,0 +1,650 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Planning — Intranet</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #222325;
+      color: #f8f9fb;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      padding: 1.5rem;
+      gap: 1rem;
+    }
+
+    /* ── Top bar ─────────────────────────────────────────────────── */
+    .top-bar {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    .btn-back {
+      background: none;
+      border: 1.5px solid #3a3d44;
+      border-radius: 8px;
+      padding: 0.5rem 0.85rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      font-family: inherit;
+      color: #9ca3af;
+      cursor: pointer;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      transition: border-color 0.2s, color 0.2s;
+    }
+    .btn-back:hover { border-color: #6b92e4; color: #f8f9fb; }
+
+    .page-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: #f8f9fb;
+      margin-right: auto;
+    }
+
+    .btn-nav {
+      background: none;
+      border: 1.5px solid #3a3d44;
+      border-radius: 8px;
+      padding: 0.45rem 0.8rem;
+      font-size: 1rem;
+      font-family: inherit;
+      color: #f8f9fb;
+      cursor: pointer;
+      line-height: 1;
+      transition: border-color 0.2s, color 0.2s;
+    }
+    .btn-nav:hover:not(:disabled) { border-color: #6b92e4; color: #6b92e4; }
+    .btn-nav:disabled { color: #4a4d56; border-color: #2d2f33; cursor: default; }
+
+    #date-display {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #f8f9fb;
+      min-width: 120px;
+      text-align: center;
+    }
+
+    .select-jt {
+      background: #2d2f33;
+      border: 1.5px solid #3a3d44;
+      border-radius: 8px;
+      padding: 0.45rem 0.75rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      font-family: inherit;
+      color: #f8f9fb;
+      cursor: pointer;
+      max-width: 300px;
+      transition: border-color 0.2s;
+    }
+    .select-jt:hover, .select-jt:focus { border-color: #6b92e4; outline: none; }
+
+    .btn-refresh {
+      background: #2563eb;
+      border: none;
+      border-radius: 8px;
+      padding: 0.5rem 1.1rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      font-family: inherit;
+      color: #fff;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      transition: background 0.2s;
+    }
+    .btn-refresh:hover { background: #1d4ed8; }
+
+    /* ── Legend / JT badge bar ───────────────────────────────────── */
+    .legend-bar {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      flex-wrap: wrap;
+      font-size: 0.8rem;
+      color: #9ca3af;
+    }
+    .legend-item { display: flex; align-items: center; gap: 6px; }
+    .legend-swatch { width: 26px; height: 12px; border-radius: 3px; }
+    .swatch-jt   { background: #7986cb; }
+    .swatch-real { background: #66bb6a; }
+    .swatch-diff { border: 2px solid #ef5350; background: transparent; }
+
+    .jt-badge {
+      font-size: 0.78rem;
+      color: #9ca3af;
+      padding: 0.3rem 0.75rem;
+      background: #2d2f33;
+      border: 1.5px solid #3a3d44;
+      border-radius: 20px;
+      margin-left: auto;
+    }
+    .jt-badge strong { color: #7986cb; }
+
+    /* ── Gantt card ──────────────────────────────────────────────── */
+    .gantt-card {
+      background: #2d2f33;
+      border: 1.5px solid #3a3d44;
+      border-radius: 14px;
+      padding: 1.25rem 1.25rem 1.5rem;
+      flex: 1;
+      overflow-x: auto;
+    }
+
+    .gantt { position: relative; min-width: 700px; }
+
+    /* Time ruler */
+    .ruler {
+      display: flex;
+      margin-left: 90px;
+      height: 24px;
+      position: relative;
+      border-bottom: 1px solid #4a4d56;
+      margin-bottom: 8px;
+    }
+    .ruler-tick {
+      position: absolute;
+      bottom: 0;
+      transform: translateX(-50%);
+      font-size: 0.68rem;
+      color: #6b7280;
+      white-space: nowrap;
+    }
+    .ruler-tick::after {
+      content: '';
+      display: block;
+      width: 1px;
+      height: 5px;
+      background: #4a4d56;
+      margin: 0 auto;
+    }
+
+    /* Fauteuil section */
+    .fauteuil-section {
+      display: flex;
+      margin-bottom: 4px;
+      align-items: stretch;
+    }
+    .fauteuil-label {
+      width: 90px;
+      min-width: 90px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 0.88rem;
+      color: #d1d5db;
+      padding-right: 10px;
+    }
+    .diff-dot {
+      display: inline-block;
+      width: 7px; height: 7px;
+      background: #ef5350;
+      border-radius: 50%;
+      margin-left: 4px;
+      vertical-align: middle;
+    }
+    .fauteuil-tracks {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      padding: 4px 0;
+    }
+
+    .track { position: relative; height: 26px; }
+
+    .track-row-label {
+      position: absolute;
+      left: -88px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 0.62rem;
+      color: #6b7280;
+      white-space: nowrap;
+      width: 82px;
+      text-align: right;
+    }
+
+    .track-grid-line {
+      position: absolute;
+      top: 0; bottom: 0;
+      width: 1px;
+      background: rgba(255,255,255,0.05);
+      pointer-events: none;
+    }
+
+    /* Blocks */
+    .block {
+      position: absolute;
+      top: 2px;
+      height: 22px;
+      border-radius: 4px;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      padding: 0 5px;
+      font-size: 0.68rem;
+      font-weight: 600;
+      color: #fff;
+      white-space: nowrap;
+      cursor: default;
+      transition: opacity .15s;
+    }
+    .block:hover { opacity: .8; }
+    .block-jt   { background: #7986cb; }
+    .block-real { background: #66bb6a; }
+    .block-diff-missing {
+      background: transparent !important;
+      border: 2px solid #ef5350;
+      color: #ef5350;
+    }
+    .block-diff-extra { border: 2px solid #ef5350; }
+
+    .diff-marker {
+      position: absolute;
+      top: 0; bottom: 0;
+      width: 2px;
+      background: #ef5350;
+      opacity: .55;
+      pointer-events: none;
+    }
+
+    .fauteuil-separator {
+      height: 1px;
+      background: rgba(255,255,255,0.07);
+      margin: 4px 0 8px 90px;
+    }
+
+    /* ── Loading overlay ─────────────────────────────────────────── */
+    #loading-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(20,22,28,0.72);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(2px);
+    }
+    #loading-overlay.visible { display: flex; }
+
+    .loading-card {
+      background: #fff;
+      border-radius: 16px;
+      padding: 2rem 2.5rem;
+      width: 380px;
+      max-width: 92vw;
+      box-shadow: 0 24px 64px rgba(0,0,0,0.28);
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+    .loading-title  { font-size: 1rem; font-weight: 700; color: #1a1d23; }
+    .loading-text   { font-size: 0.85rem; color: #4b5563; min-height: 1.2em; }
+    .progress-track { background: #e5e7eb; border-radius: 999px; height: 8px; overflow: hidden; }
+    .progress-bar   { height: 100%; border-radius: 999px; background: #2563eb; width: 0%; transition: width 0.35s ease; }
+    .loading-percent { font-size: 0.78rem; color: #9ca3af; text-align: right; }
+
+    /* ── Tooltip ─────────────────────────────────────────────────── */
+    #tooltip {
+      position: fixed;
+      display: none;
+      background: #1a1d23;
+      color: #f8f9fb;
+      border: 1px solid #3a3d44;
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 0.78rem;
+      pointer-events: none;
+      z-index: 300;
+      max-width: 240px;
+      line-height: 1.6;
+      white-space: pre-line;
+    }
+  </style>
+</head>
+<body>
+
+<div id="loading-overlay" {% if is_loading %}class="visible"{% endif %}>
+  <div class="loading-card">
+    <div class="loading-title">Chargement du planning…</div>
+    <div class="loading-text" id="loading-text">{{ loading_text|default:"" }}</div>
+    <div class="progress-track">
+      <div class="progress-bar" id="progress-bar" style="width:{{ loading_percent|default:0 }}%"></div>
+    </div>
+    <div class="loading-percent" id="loading-percent">{{ loading_percent|default:0 }}%</div>
+  </div>
+</div>
+
+<div id="tooltip"></div>
+
+<!-- Top bar -->
+<div class="top-bar">
+  <a href="{% url 'intra_landing' %}" class="btn-back">← Intranet</a>
+  <span class="page-title">Planning</span>
+  <button class="btn-nav" id="btn-prev" disabled>‹</button>
+  <span id="date-display">{{ selected_date }}</span>
+  <button class="btn-nav" id="btn-next" disabled>›</button>
+  <select class="select-jt" id="jt-select">
+    <option value="">— Journée type (auto) —</option>
+  </select>
+  <button class="btn-refresh" id="btn-refresh">🔄 Actualiser</button>
+</div>
+
+<!-- Legend + JT badge -->
+<div class="legend-bar">
+  <div class="legend-item"><div class="legend-swatch swatch-jt"></div> Journée type</div>
+  <div class="legend-item"><div class="legend-swatch swatch-real"></div> RDV réels</div>
+  <div class="legend-item"><div class="legend-swatch swatch-diff"></div> Différence</div>
+  <span id="jt-badge" class="jt-badge" style="display:none">JT : <strong id="jt-badge-text"></strong></span>
+</div>
+
+<!-- Gantt -->
+<div class="gantt-card">
+  <div class="gantt" id="gantt"></div>
+</div>
+
+<script>
+const PX_PER_MIN = 2.5;
+
+let dayData   = {{ day_data_json|safe }};
+let prevDate  = {{ prev_date_json|safe }};
+let nextDate  = {{ next_date_json|safe }};
+const jtNames = {{ jt_names_json|safe }};
+let selectedJt = "{{ selected_jt }}";
+
+// ── JT selector ───────────────────────────────────────────────────────────
+const jtSelect = document.getElementById("jt-select");
+jtNames.forEach(name => {
+  const opt = document.createElement("option");
+  opt.value = name;
+  opt.textContent = name;
+  if (name === selectedJt) opt.selected = true;
+  jtSelect.appendChild(opt);
+});
+jtSelect.addEventListener("change", () => {
+  selectedJt = jtSelect.value;
+  fetchDay(dayData.date, selectedJt);
+});
+
+// ── Navigation ────────────────────────────────────────────────────────────
+const btnPrev     = document.getElementById("btn-prev");
+const btnNext     = document.getElementById("btn-next");
+const dateDisplay = document.getElementById("date-display");
+
+function updateNav() {
+  btnPrev.disabled = !prevDate;
+  btnNext.disabled = !nextDate;
+}
+btnPrev.addEventListener("click", () => { if (prevDate) fetchDay(prevDate, selectedJt); });
+btnNext.addEventListener("click", () => { if (nextDate) fetchDay(nextDate, selectedJt); });
+
+// ── Fetch ─────────────────────────────────────────────────────────────────
+function fetchDay(dateStr, jt) {
+  let url = `/intra/calendar/data/?date=${dateStr}`;
+  if (jt) url += `&jt=${encodeURIComponent(jt)}`;
+  fetch(url)
+    .then(r => r.json())
+    .then(data => {
+      dayData  = data.day;
+      prevDate = data.prev_date;
+      nextDate = data.next_date;
+      renderGantt(dayData);
+      updateNav();
+      dateDisplay.textContent = dayData.date;
+      const resolvedJt = dayData.jt_name || "";
+      if (!jt && resolvedJt) {
+        jtSelect.value = resolvedJt;
+        selectedJt = resolvedJt;
+      } else if (!jt) {
+        jtSelect.value = "";
+      }
+      updateJtBadge(resolvedJt);
+    })
+    .catch(err => console.error("Fetch error:", err));
+}
+
+function updateJtBadge(name) {
+  const badge = document.getElementById("jt-badge");
+  const text  = document.getElementById("jt-badge-text");
+  if (name) { text.textContent = name; badge.style.display = ""; }
+  else       { badge.style.display = "none"; }
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────
+function toHHMM(m) {
+  return `${String(Math.floor(m/60)).padStart(2,'0')}:${String(m%60).padStart(2,'0')}`;
+}
+
+// ── Tooltip ───────────────────────────────────────────────────────────────
+const tooltip = document.getElementById("tooltip");
+function attachTooltip(el, lines) {
+  const text = lines.filter(Boolean).join("\n");
+  el.addEventListener("mouseenter", e => { tooltip.textContent = text; tooltip.style.display = "block"; moveTooltip(e); });
+  el.addEventListener("mousemove",  e => moveTooltip(e));
+  el.addEventListener("mouseleave", () => { tooltip.style.display = "none"; });
+}
+function moveTooltip(e) {
+  let x = e.clientX + 14, y = e.clientY + 14;
+  if (x + 250 > window.innerWidth)  x = e.clientX - 254;
+  if (y + 100 > window.innerHeight) y = e.clientY - 100;
+  tooltip.style.left = x + "px";
+  tooltip.style.top  = y + "px";
+}
+
+// ── Gantt rendering ───────────────────────────────────────────────────────
+function renderGantt(data) {
+  const gantt = document.getElementById("gantt");
+  gantt.innerHTML = "";
+
+  const fauteils     = data.fauteils     || [];
+  const diffFauteils = new Set(data.diff_fauteils || []);
+  const startTime    = data.start_time   || 570;
+  const endTime      = data.end_time     || 1080;
+  const totalPx      = (endTime - startTime) * PX_PER_MIN;
+  const jt_events    = data.jt_events    || [];
+  const appointments = data.appointments || [];
+  const diffs        = data.diffs        || { missing: [], extra: [] };
+
+  const missingKeys = new Set(diffs.missing.map(e => `${e.fauteuil}|${e.startminutes}`));
+  const extraKeys   = new Set(diffs.extra.map(e   => `${e.fauteuil}|${e.startminutes}`));
+
+  if (fauteils.length === 0) {
+    gantt.innerHTML = '<div style="padding:40px;text-align:center;color:#6b7280">Aucun rendez-vous pour cette journée.</div>';
+    return;
+  }
+
+  // Ruler
+  const ruler = document.createElement("div");
+  ruler.className = "ruler";
+  ruler.style.width = (90 + totalPx) + "px";
+  for (let m = startTime; m <= endTime; m += 30) {
+    const tick = document.createElement("div");
+    tick.className = "ruler-tick";
+    tick.style.left = (90 + (m - startTime) * PX_PER_MIN) + "px";
+    tick.textContent = toHHMM(m);
+    ruler.appendChild(tick);
+  }
+  gantt.appendChild(ruler);
+
+  // Group by fauteuil
+  const jtByFauteuil   = {};
+  const realByFauteuil = {};
+  fauteils.forEach(f => { jtByFauteuil[f] = []; realByFauteuil[f] = []; });
+  jt_events.forEach(e    => { if (jtByFauteuil[e.fauteuil])   jtByFauteuil[e.fauteuil].push(e); });
+  appointments.forEach(e => { if (realByFauteuil[e.fauteuil]) realByFauteuil[e.fauteuil].push(e); });
+
+  function addGridLines(track) {
+    for (let m = startTime; m <= endTime; m += 30) {
+      const gl = document.createElement("div");
+      gl.className = "track-grid-line";
+      gl.style.left = ((m - startTime) * PX_PER_MIN) + "px";
+      track.appendChild(gl);
+    }
+  }
+
+  fauteils.forEach((fauteuil, fi) => {
+    const section  = document.createElement("div");
+    section.className = "fauteuil-section";
+
+    const labelDiv = document.createElement("div");
+    labelDiv.className = "fauteuil-label";
+    labelDiv.textContent = fauteuil;
+    if (diffFauteils.has(fauteuil)) {
+      const dot = document.createElement("span");
+      dot.className = "diff-dot";
+      labelDiv.appendChild(dot);
+    }
+    section.appendChild(labelDiv);
+
+    const tracksDiv = document.createElement("div");
+    tracksDiv.className = "fauteuil-tracks";
+    tracksDiv.style.width = totalPx + "px";
+
+    // JT track
+    const jtTrack = document.createElement("div");
+    jtTrack.className = "track";
+    jtTrack.style.width = totalPx + "px";
+    addGridLines(jtTrack);
+    const jtLabel = document.createElement("span");
+    jtLabel.className = "track-row-label";
+    jtLabel.textContent = "JT";
+    jtTrack.appendChild(jtLabel);
+
+    jtByFauteuil[fauteuil].forEach(evt => {
+      const key       = `${evt.fauteuil}|${evt.startminutes}`;
+      const isMissing = missingKeys.has(key);
+      const left      = (evt.startminutes - startTime) * PX_PER_MIN;
+      const width     = Math.max(evt.duration * PX_PER_MIN, 6);
+      const block     = document.createElement("div");
+      block.className = "block" + (isMissing ? " block-diff-missing" : " block-jt");
+      block.style.left  = left  + "px";
+      block.style.width = width + "px";
+      if (!isMissing && evt.mt_color) block.style.background = evt.mt_color;
+      if (width > 30) block.textContent = evt.mt_value || "";
+      attachTooltip(block, [
+        `JT : ${evt.mt_value || "—"}`,
+        `${toHHMM(evt.startminutes)} → ${toHHMM(evt.startminutes + evt.duration)}  (${evt.duration} min)`,
+        `Praticien : ${evt.praticien_id}`,
+        isMissing ? "⚠ Absent du planning réel" : null,
+      ]);
+      jtTrack.appendChild(block);
+    });
+    tracksDiv.appendChild(jtTrack);
+
+    // Real track
+    const realTrack = document.createElement("div");
+    realTrack.className = "track";
+    realTrack.style.width = totalPx + "px";
+    addGridLines(realTrack);
+    const realLabel = document.createElement("span");
+    realLabel.className = "track-row-label";
+    realLabel.textContent = "Réel";
+    realTrack.appendChild(realLabel);
+
+    realByFauteuil[fauteuil].forEach(evt => {
+      const key     = `${evt.fauteuil}|${evt.startminutes}`;
+      const isExtra = extraKeys.has(key);
+      const left    = (evt.startminutes - startTime) * PX_PER_MIN;
+      const width   = Math.max(evt.duration * PX_PER_MIN, 6);
+      const block   = document.createElement("div");
+      block.className = "block block-real" + (isExtra ? " block-diff-extra" : "");
+      block.style.left  = left  + "px";
+      block.style.width = width + "px";
+      if (width > 30) block.textContent = evt.praticien_id || "";
+      attachTooltip(block, [
+        `RDV réel`,
+        `${toHHMM(evt.startminutes)} → ${toHHMM(evt.startminutes + evt.duration)}  (${evt.duration} min)`,
+        `Praticien : ${evt.praticien_id}`,
+        evt.patient_id ? `Patient : ${evt.patient_id}` : null,
+        isExtra ? "⚠ Absent de la journée type" : null,
+      ]);
+      realTrack.appendChild(block);
+    });
+
+    diffs.missing.filter(e => e.fauteuil === fauteuil).forEach(evt => {
+      const cx = (evt.startminutes - startTime) * PX_PER_MIN
+               + Math.max(evt.duration * PX_PER_MIN, 6) / 2;
+      const marker = document.createElement("div");
+      marker.className = "diff-marker";
+      marker.style.left = cx + "px";
+      realTrack.appendChild(marker);
+    });
+
+    tracksDiv.appendChild(realTrack);
+    section.appendChild(tracksDiv);
+    gantt.appendChild(section);
+
+    if (fi < fauteils.length - 1) {
+      const sep = document.createElement("div");
+      sep.className = "fauteuil-separator";
+      gantt.appendChild(sep);
+    }
+  });
+}
+
+// ── Loading / refresh polling ─────────────────────────────────────────────
+const overlay     = document.getElementById("loading-overlay");
+const loadingText = document.getElementById("loading-text");
+const progressBar = document.getElementById("progress-bar");
+const loadingPct  = document.getElementById("loading-percent");
+let pollTimer = null;
+
+function startPolling() {
+  if (pollTimer) return;
+  pollTimer = setInterval(pollStatus, 400);
+}
+function stopPolling() { clearInterval(pollTimer); pollTimer = null; }
+
+function pollStatus() {
+  fetch("/intra/calendar/loading-status/")
+    .then(r => r.json())
+    .then(s => {
+      if (s.loading) {
+        overlay.classList.add("visible");
+        loadingText.textContent   = s.text || "Chargement…";
+        progressBar.style.width   = (s.percent || 0) + "%";
+        loadingPct.textContent    = (s.percent || 0) + "%";
+      } else {
+        overlay.classList.remove("visible");
+        stopPolling();
+        fetchDay(dayData.date, selectedJt);
+      }
+    })
+    .catch(() => {});
+}
+
+function getCsrf() {
+  const m = document.cookie.match(/csrftoken=([^;]+)/);
+  return m ? m[1] : "";
+}
+
+document.getElementById("btn-refresh").addEventListener("click", () => {
+  fetch("/intra/calendar/refresh/", {
+    method: "POST",
+    headers: { "X-CSRFToken": getCsrf() },
+  })
+    .then(r => r.json())
+    .then(() => startPolling());
+});
+
+// ── Init ──────────────────────────────────────────────────────────────────
+renderGantt(dayData);
+updateNav();
+updateJtBadge(dayData.jt_name || "");
+{% if is_loading %}startPolling();{% endif %}
+</script>
+</body>
+</html>

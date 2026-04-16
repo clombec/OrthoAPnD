@@ -100,14 +100,20 @@ def is_planning_data_available() -> bool:
 def refresh_planning_from_external(progress_cb=None) -> dict:
     return calendar_services.refresh_records_from_external(progress_cb=progress_cb)
 
-def get_working_days() -> list[dict]:
-    return calendar_services.get_working_days()
-
-def get_day_planning(day_date) -> dict | None:
+def get_day_planning(day_date) -> dict:
     return calendar_services.get_day_planning(day_date)
+
+def get_day_planning_with_jt(day_date, jt_name=None) -> dict:
+    return calendar_services.get_day_planning_with_jt(day_date, jt_name=jt_name)
+
+def get_jt_list() -> list[str]:
+    return calendar_services.get_jt_list()
+
+def get_jt_events(jt_name: str) -> dict:
+    return calendar_services.get_jt_events(jt_name)
 
 def get_adjacent_dates(day_date):
     return calendar_services.get_adjacent_dates(day_date)
 
-def get_nearest_working_day(ref):
-    return calendar_services.get_nearest_working_day(ref)
+def get_nearest_date(ref):
+    return calendar_services.get_nearest_date(ref)

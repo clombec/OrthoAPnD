@@ -19,9 +19,9 @@ urlpatterns = [
     path("intra/recettes/loading-status/", views.recettes_loading_status_view, name="recettes_loading_status"),
     path("intra/recettes/compare/", views.recettes_compare_view, name="recettes_compare"),
 
-    # Planning (journées types)
-    path("intra/planning/", views.planning_view, name="planning"),
-    path("intra/planning/refresh/", views.planning_refresh_view, name="planning_refresh"),
-    path("intra/planning/loading-status/", views.planning_loading_status_view, name="planning_loading_status"),
-    path("intra/planning/data/", views.planning_data_view, name="planning_data"),
+    # Calendar (journées types + RDV réels)
+    path("intra/calendar/", views.planning_view, name="planning"),
+    path("intra/calendar/refresh/", views.planning_refresh_view, name="planning_refresh"),
+    path("intra/calendar/loading-status/", views.planning_loading_status_view, name="planning_loading_status"),
+    path("intra/calendar/data/", views.planning_data_view, name="planning_data"),
 ]
