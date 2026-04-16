@@ -48,7 +48,6 @@
       font-size: 1.1rem;
       font-weight: 700;
       color: #f8f9fb;
-      margin-right: auto;
     }
 
     .btn-nav {
@@ -74,20 +73,20 @@
       text-align: center;
     }
 
-    .select-jt {
+    .jt-label {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: #7986cb;
       background: #2d2f33;
       border: 1.5px solid #3a3d44;
-      border-radius: 8px;
-      padding: 0.45rem 0.75rem;
-      font-size: 0.85rem;
-      font-weight: 600;
-      font-family: inherit;
-      color: #f8f9fb;
-      cursor: pointer;
-      max-width: 300px;
-      transition: border-color 0.2s;
+      border-radius: 20px;
+      padding: 0.35rem 0.9rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 340px;
     }
-    .select-jt:hover, .select-jt:focus { border-color: #6b92e4; outline: none; }
+    .jt-label:empty { display: none; }
 
     .btn-refresh {
       background: #2563eb;
@@ -106,7 +105,7 @@
     }
     .btn-refresh:hover { background: #1d4ed8; }
 
-    /* ── Legend / JT badge bar ───────────────────────────────────── */
+    /* ── Legend bar ─────────────────────────────────────────────── */
     .legend-bar {
       display: flex;
       align-items: center;
@@ -120,17 +119,6 @@
     .swatch-jt   { background: #7986cb; }
     .swatch-real { background: #66bb6a; }
     .swatch-diff { border: 2px solid #ef5350; background: transparent; }
-
-    .jt-badge {
-      font-size: 0.78rem;
-      color: #9ca3af;
-      padding: 0.3rem 0.75rem;
-      background: #2d2f33;
-      border: 1.5px solid #3a3d44;
-      border-radius: 20px;
-      margin-left: auto;
-    }
-    .jt-badge strong { color: #7986cb; }
 
     /* ── Gantt card ──────────────────────────────────────────────── */
     .gantt-card {
@@ -337,18 +325,15 @@
   <button class="btn-nav" id="btn-prev" disabled>‹</button>
   <span id="date-display">{{ selected_date }}</span>
   <button class="btn-nav" id="btn-next" disabled>›</button>
-  <select class="select-jt" id="jt-select">
-    <option value="">— Journée type (auto) —</option>
-  </select>
-  <button class="btn-refresh" id="btn-refresh">🔄 Actualiser</button>
+  <span class="jt-label" id="jt-label"></span>
+  <button class="btn-refresh" id="btn-refresh" style="margin-left:auto">🔄 Actualiser</button>
 </div>
 
-<!-- Legend + JT badge -->
+<!-- Legend -->
 <div class="legend-bar">
   <div class="legend-item"><div class="legend-swatch swatch-jt"></div> Journée type</div>
   <div class="legend-item"><div class="legend-swatch swatch-real"></div> RDV réels</div>
   <div class="legend-item"><div class="legend-swatch swatch-diff"></div> Différence</div>
-  <span id="jt-badge" class="jt-badge" style="display:none">JT : <strong id="jt-badge-text"></strong></span>
 </div>
 
 <!-- Gantt -->
@@ -359,25 +344,9 @@
 <script>
 const PX_PER_MIN = 2.5;
 
-let dayData   = {{ day_data_json|safe }};
-let prevDate  = {{ prev_date_json|safe }};
-let nextDate  = {{ next_date_json|safe }};
-const jtNames = {{ jt_names_json|safe }};
-let selectedJt = "{{ selected_jt }}";
-
-// ── JT selector ───────────────────────────────────────────────────────────
-const jtSelect = document.getElementById("jt-select");
-jtNames.forEach(name => {
-  const opt = document.createElement("option");
-  opt.value = name;
-  opt.textContent = name;
-  if (name === selectedJt) opt.selected = true;
-  jtSelect.appendChild(opt);
-});
-jtSelect.addEventListener("change", () => {
-  selectedJt = jtSelect.value;
-  fetchDay(dayData.date, selectedJt);
-});
+let dayData  = {{ day_data_json|safe }};
+let prevDate = {{ prev_date_json|safe }};
+let nextDate = {{ next_date_json|safe }};
 
 // ── Navigation ────────────────────────────────────────────────────────────
 const btnPrev     = document.getElementById("btn-prev");
@@ -388,14 +357,12 @@ function updateNav() {
   btnPrev.disabled = !prevDate;
   btnNext.disabled = !nextDate;
 }
-btnPrev.addEventListener("click", () => { if (prevDate) fetchDay(prevDate, selectedJt); });
-btnNext.addEventListener("click", () => { if (nextDate) fetchDay(nextDate, selectedJt); });
+btnPrev.addEventListener("click", () => { if (prevDate) fetchDay(prevDate); });
+btnNext.addEventListener("click", () => { if (nextDate) fetchDay(nextDate); });
 
 // ── Fetch ─────────────────────────────────────────────────────────────────
-function fetchDay(dateStr, jt) {
-  let url = `/intra/calendar/data/?date=${dateStr}`;
-  if (jt) url += `&jt=${encodeURIComponent(jt)}`;
-  fetch(url)
+function fetchDay(dateStr) {
+  fetch(`/intra/calendar/data/?date=${dateStr}`)
     .then(r => r.json())
     .then(data => {
       dayData  = data.day;
@@ -404,23 +371,13 @@ function fetchDay(dateStr, jt) {
       renderGantt(dayData);
       updateNav();
       dateDisplay.textContent = dayData.date;
-      const resolvedJt = dayData.jt_name || "";
-      if (!jt && resolvedJt) {
-        jtSelect.value = resolvedJt;
-        selectedJt = resolvedJt;
-      } else if (!jt) {
-        jtSelect.value = "";
-      }
-      updateJtBadge(resolvedJt);
+      updateJtLabel(dayData.jt_name || "");
     })
     .catch(err => console.error("Fetch error:", err));
 }
 
-function updateJtBadge(name) {
-  const badge = document.getElementById("jt-badge");
-  const text  = document.getElementById("jt-badge-text");
-  if (name) { text.textContent = name; badge.style.display = ""; }
-  else       { badge.style.display = "none"; }
+function updateJtLabel(name) {
+  document.getElementById("jt-label").textContent = name;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────
@@ -643,7 +600,7 @@ document.getElementById("btn-refresh").addEventListener("click", () => {
 // ── Init ──────────────────────────────────────────────────────────────────
 renderGantt(dayData);
 updateNav();
-updateJtBadge(dayData.jt_name || "");
+updateJtLabel(dayData.jt_name || "");
 {% if is_loading %}startPolling();{% endif %}
 </script>
 </body>

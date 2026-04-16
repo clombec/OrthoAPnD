@@ -27,7 +27,6 @@ from .services import (
     is_planning_data_available,
     refresh_planning_from_external,
     get_day_planning_with_jt,
-    get_jt_list,
     get_adjacent_dates,
     get_nearest_date,
 )
@@ -418,10 +417,7 @@ def planning_view(request):
     else:
         selected_date = get_nearest_date(today) or today
 
-    jt_names = get_jt_list()
-    selected_jt = request.GET.get("jt", "") or None
-
-    day_data = get_day_planning_with_jt(selected_date, jt_name=selected_jt)
+    day_data = get_day_planning_with_jt(selected_date)
     prev_date, next_date = get_adjacent_dates(selected_date)
 
     state = loading_state.get(name="planning")
@@ -431,8 +427,6 @@ def planning_view(request):
         "selected_date":   selected_date.isoformat(),
         "prev_date_json":  json.dumps(prev_date.isoformat() if prev_date else None),
         "next_date_json":  json.dumps(next_date.isoformat() if next_date else None),
-        "jt_names_json":   json.dumps(jt_names),
-        "selected_jt":     selected_jt or "",
         "is_loading":      state["loading"],
         "loading_text":    state["text"],
         "loading_percent": state["percent"],
