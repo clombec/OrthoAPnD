@@ -426,11 +426,11 @@ function renderGantt(data) {
   // Ruler
   const ruler = document.createElement("div");
   ruler.className = "ruler";
-  ruler.style.width = (90 + totalPx) + "px";
+  ruler.style.width = totalPx + "px";
   for (let m = startTime; m <= endTime; m += 30) {
     const tick = document.createElement("div");
     tick.className = "ruler-tick";
-    tick.style.left = (90 + (m - startTime) * PX_PER_MIN) + "px";
+    tick.style.left = ((m - startTime) * PX_PER_MIN) + "px";
     tick.textContent = toHHMM(m);
     ruler.appendChild(tick);
   }

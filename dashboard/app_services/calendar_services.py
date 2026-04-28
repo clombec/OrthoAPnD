@@ -67,6 +67,9 @@ def refresh_records_from_external(progress_cb=None) -> dict:
     with OrthoASession() as session:
         _progress("Téléchargement du planning…", 20)
         raw = session.get_calendar_records()
+#    with open("calendar_raw.json", "w", encoding="utf-8") as f:
+#        import json
+#        json.dump(raw, f, ensure_ascii=False, indent=2)
 
     return _save_from_raw(raw, _progress)
 
@@ -102,27 +105,35 @@ def _save_from_raw(raw: dict, _progress=None) -> dict:
             ))
     JourneeTypeEvent.objects.bulk_create(events_to_create)
 
-    # ── Real appointments ─────────────────────────────────────────────────────
-    _prog("Enregistrement des rendez-vous…", 70)
-    AppointmentRecord.objects.all().delete()
+    # ── Day → JT mapping (alldays2026) ───────────────────────────────────────
+    _prog("Enregistrement des jours ouverts…", 60)
     DayRecord.objects.all().delete()
+    day_records: list = []
+    for day in raw.get("alldays2026", []):
+        parsed_date = _parse_event_date(day.get("date", ""))
+        if parsed_date is None:
+            logging.warning(f"Skipping alldays2026 entry — unparseable date: {day.get('date')}")
+            continue
+        jt_name = day.get("jt_name") or ""
+        if jt_name:
+            day_records.append(DayRecord(date=parsed_date, jt_name=jt_name))
+    DayRecord.objects.bulk_create(day_records)
 
-    days_data = raw.get("days")
+    # ── Real appointments ─────────────────────────────────────────────────────
+    _prog("Enregistrement des rendez-vous…", 75)
+    AppointmentRecord.objects.all().delete()
     appt_objects: list = []
     skipped = 0
 
+    # New format: events grouped under each day entry
+    days_data = raw.get("days")
     if days_data is not None:
-        # ── New format: events grouped by day, jt_name known per day ─────────
-        day_records: list = []
         for day in days_data:
             parsed_date = _parse_event_date(day.get("date", ""))
             if parsed_date is None:
                 logging.warning(f"Skipping day — unparseable date: {day.get('date')}")
                 skipped += 1
                 continue
-            jt_name = day.get("jt_name") or ""
-            if jt_name:
-                day_records.append(DayRecord(date=parsed_date, jt_name=jt_name))
             for evt in day.get("events", []):
                 patient_id = evt.get("patient_id")
                 appt_objects.append(AppointmentRecord(
@@ -133,10 +144,8 @@ def _save_from_raw(raw: dict, _progress=None) -> dict:
                     praticien_id=str(evt.get("praticien_id", "")),
                     patient_id=str(patient_id) if patient_id is not None else None,
                 ))
-        DayRecord.objects.bulk_create(day_records)
-        AppointmentRecord.objects.bulk_create(appt_objects)
     else:
-        # ── Legacy format: flat events list ───────────────────────────────────
+        # Flat events list
         for evt in raw.get("events", []):
             parsed_date = _parse_event_date(evt.get("date", ""))
             if parsed_date is None:
@@ -152,17 +161,19 @@ def _save_from_raw(raw: dict, _progress=None) -> dict:
                 praticien_id=str(evt.get("praticien_id", "")),
                 patient_id=str(patient_id) if patient_id is not None else None,
             ))
-        AppointmentRecord.objects.bulk_create(appt_objects)
+    AppointmentRecord.objects.bulk_create(appt_objects)
 
     _prog("Chargement terminé", 100)
     logging.info(
         f"Calendar refreshed: {len(jt_data)} JTs, "
         f"{len(events_to_create)} JT events, "
+        f"{len(day_records)} open days, "
         f"{len(appt_objects)} appointments ({skipped} skipped)."
     )
     return {
         "jt": len(jt_data),
         "jt_events": len(events_to_create),
+        "days": len(day_records),
         "appointments": len(appt_objects),
     }
 
