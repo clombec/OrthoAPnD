@@ -18,7 +18,6 @@ DATE_KEY = "date"
 # Date formats to try when parsing the date field
 DATE_FORMATS = ["%d/%m/%Y", "%Y-%m-%d", "%d-%m-%Y", "%d/%m/%y"]
 
-
 def _parse_date(value: str) -> date | None:
     for fmt in DATE_FORMATS:
         try:
@@ -30,17 +29,23 @@ def _parse_date(value: str) -> date | None:
 
 def refresh_income_from_external(progress_cb=None) -> dict:
     """
-    Fetch payment records from OrthoAdvance, clear the table and re-insert.
-    Returns a summary dict with the total record count.
+    Fetch payment records from OrthoAdvance for the range [last DB date → today],
+    replace only that slice, and leave older records untouched.
+    Returns a summary dict with the count of records saved/skipped.
     """
     def _progress(text: str, pct: int) -> None:
         if progress_cb:
             progress_cb(text, pct)
 
+    from django.db.models import Max
+    today = date.today()
+    agg = IncomeRecord.objects.aggregate(last=Max("date"))
+    dayin = agg["last"] or date(2020, 1, 1)
+
     _progress("Connexion à OrthoAdvance…", 5)
     with OrthoASession() as session:
         _progress("Téléchargement des encaissements…", 30)
-        rows = session.get_income_records(5)
+        rows = session.get_income_records(dayin=dayin.strftime("%Y-%m-%d"))
 
     _progress("Traitement des données…", 70)
     objects = []
@@ -55,7 +60,7 @@ def refresh_income_from_external(progress_cb=None) -> dict:
         objects.append(IncomeRecord(date=parsed_date, amount=amount))
 
     _progress("Enregistrement en base de données…", 90)
-    IncomeRecord.objects.all().delete()
+    IncomeRecord.objects.filter(date__gte=dayin, date__lte=today).delete()
     IncomeRecord.objects.bulk_create(objects)
 
     logging.debug(f"Income refreshed: {len(objects)} saved, {skipped} skipped.")
