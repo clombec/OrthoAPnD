@@ -9,6 +9,7 @@
             "name": "Python Debugger: Current File",
             "type": "debugpy",
             "request": "launch",
+            "justMyCode": false,
             "program": "manage.py",
             "args": ["runserver"],
             "console": "integratedTerminal"
