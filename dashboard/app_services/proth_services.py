@@ -148,9 +148,13 @@ def refresh_records_from_external(progress_cb=None) -> dict:
                 url=url,
             ))
 
-        _progress("Enregistrement en base de données…", 90)
-        ProsthesisRecord.objects.all().delete()
-        ProsthesisRecord.objects.bulk_create(objects)
+        try:
+            _progress("Enregistrement en base de données…", 90)
+            ProsthesisRecord.objects.all().delete()
+            ProsthesisRecord.objects.bulk_create(objects)
+        except Exception as e:
+            logging.error(f"Error saving records to database: {e}")
+            raise
 
     logging.debug("Finished refreshing records from external source.")
     _progress("Chargement terminé", 100)
