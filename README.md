@@ -1,6 +1,6 @@
 # OrthoAPnD
 
-Django dashboard for prosthesis follow-up.
+Django dashboard for OrthoAdvance data follow-up.
 This projects uses OrthoAGet to retrieve data from OrthoAdvance and displays it through a local webpage.
 Development in progress, not for use in Prod/Open environment
 
