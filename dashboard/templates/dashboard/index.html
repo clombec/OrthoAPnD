@@ -452,6 +452,7 @@
         {% endfor %}
         <th class="no-sort">Commentaires</th>
         <th class="no-sort">URL</th>
+        <th class="no-sort">Action</th>
       </tr>
     </thead>
     <tbody>
@@ -490,10 +491,16 @@
                  style="color:#2563eb;font-size:0.8rem;">Ouvrir dans OrthoAdvance ↗</a>
             {% else %}—{% endif %}
           </td>
+          <td>
+            {% if record.url %}
+              <a href="#" onclick="showClosurePreview('{{ record.url }}'); return false;"
+                 style="color:#dc2626;font-size:0.8rem;">Fermer l'acte</a>
+            {% else %}—{% endif %}
+          </td>
         </tr>
       {% empty %}
         <tr>
-          <td colspan="10" class="empty">Aucun enregistrement trouvé.</td>
+          <td colspan="11" class="empty">Aucun enregistrement trouvé.</td>
         </tr>
       {% endfor %}
     </tbody>
@@ -525,6 +532,27 @@
     <div class="modal-actions">
       <button class="btn-cancel" onclick="closeActsModal()">Annuler</button>
       <button class="btn-ok" onclick="applyActsFilter()">OK</button>
+    </div>
+  </div>
+</div>
+
+<!-- Closure preview modal -->
+<div class="modal-backdrop" id="closureModal" onclick="if(event.target===this)closeClosureModal()">
+  <div class="modal">
+    <h2>Aperçu — Fermer l'acte (test)</h2>
+    <p style="font-size:0.85rem;color:#6b7280;margin-bottom:1rem;">
+      Le POST suivant serait envoyé à OrthoAdvance. Aucune action n'est exécutée.
+    </p>
+    <table style="width:100%;font-size:0.85rem;border-collapse:collapse;">
+      <tr><td style="padding:4px 8px;font-weight:600;white-space:nowrap">URL</td>
+          <td id="closurePostUrl" style="padding:4px 8px;word-break:break-all;font-family:monospace"></td></tr>
+      <tr><td style="padding:4px 8px;font-weight:600">ids</td>
+          <td id="closurePostIds" style="padding:4px 8px;font-family:monospace"></td></tr>
+      <tr><td style="padding:4px 8px;font-weight:600">action</td>
+          <td style="padding:4px 8px;font-family:monospace">set_actes_as_done</td></tr>
+    </table>
+    <div class="modal-actions">
+      <button class="btn-ok" onclick="closeClosureModal()">Fermer</button>
     </div>
   </div>
 </div>
@@ -806,6 +834,18 @@
     });
 
   }); // end DOMContentLoaded
+
+  window.showClosurePreview = function (actUrl) {
+    const parsed = new URL(actUrl);
+    document.getElementById("closurePostUrl").textContent =
+      parsed.origin + "/medical/prothesiste/planning";
+    document.getElementById("closurePostIds").textContent = parsed.pathname;
+    document.getElementById("closureModal").style.display = "flex";
+  };
+
+  window.closeClosureModal = function () {
+    document.getElementById("closureModal").style.display = "";
+  };
 </script>
 
 </body>

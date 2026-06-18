@@ -4,10 +4,7 @@ from pathlib import Path
 import logging
 
 from dashboard.models import ProsthesisRecord
-from dashboard.models import UsersRecord
-from orthoaget import PROJECT_ROOT
 from orthoaget.session import OrthoASession
-from dashboard.app_services.user_services import refresh_users_records_from_external
 
 SORTABLE_FIELDS = {
     "prosthetist",
@@ -97,13 +94,6 @@ def refresh_records_from_external(progress_cb=None) -> dict:
         if progress_cb:
             progress_cb(text, percent)
 
-    def build_users_lookup() -> dict:
-        """Returns {  "prénom nom": patient_id  } (lowercase keys)."""
-        return {
-            f"{u.name}".lower(): u.patient_id
-            for u in UsersRecord.objects.all()
-        }
-
     logging.debug("Start refreshing records from external source...")
     _progress("Connexion à OrthoAdvance…", 5)
 
@@ -111,31 +101,8 @@ def refresh_records_from_external(progress_cb=None) -> dict:
         _progress("Téléchargement des actes prothésistes…", 10)
         external_records = session.get_proth_records()
 
-        _progress("Vérification des patients…", 20)
-        users_lookup = build_users_lookup()
-        users_refreshed = False
-
-        objects = []
-        for data in external_records:
-            patient_name = data["Patient"].lower()
-            patient_id = users_lookup.get(patient_name)
-
-            if patient_id is None:
-                if not users_refreshed:
-                    _progress("Mise à jour de la liste des patients…", 20)
-                    refresh_users_records_from_external(session=session, progress_cb=progress_cb)
-                    users_refreshed = True
-                    users_lookup = build_users_lookup()
-                    patient_id = users_lookup.get(patient_name)
-                else:
-                    logging.warning(f"Patient '{data['Patient']}' not found in UsersRecord after refresh.")
-
-            if patient_id is not None:
-                url = session.user_url(patient_id)
-            else:
-                url = "Utilisateur non trouvé dans OrthoAdvance"
-
-            objects.append(ProsthesisRecord(
+        objects = [
+            ProsthesisRecord(
                 patient=data["Patient"],
                 procedure=data["Acte prothésiste"],
                 prosthetist=data["Prothésiste"],
@@ -145,8 +112,10 @@ def refresh_records_from_external(progress_cb=None) -> dict:
                 comments=data.get("Commentaires", ""),
                 appointment_date=data.get("Date du rdv"),
                 impression_date=data.get("PE"),
-                url=url,
-            ))
+                url=data.get("url", ""),
+            )
+            for data in external_records
+        ]
 
         try:
             _progress("Enregistrement en base de données…", 90)
