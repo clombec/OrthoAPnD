@@ -100,6 +100,7 @@ def refresh_records_from_external(progress_cb=None) -> dict:
     with OrthoASession() as session:
         _progress("Téléchargement des actes prothésistes…", 10)
         external_records = session.get_proth_records()
+        cookies = session.get_cookies()
 
         objects = [
             ProsthesisRecord(
@@ -128,4 +129,4 @@ def refresh_records_from_external(progress_cb=None) -> dict:
     logging.debug("Finished refreshing records from external source.")
     _progress("Chargement terminé", 100)
 
-    return {"created": len(objects), "total": len(objects)}
+    return {"created": len(objects), "total": len(objects), "cookies": cookies}

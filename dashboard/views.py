@@ -1,5 +1,6 @@
 import json
 import threading
+import uuid
 from functools import wraps
 
 from django.http import JsonResponse
@@ -7,6 +8,8 @@ from django.shortcuts import render, redirect
 from django.views.decorators.http import require_POST, require_GET
 from django.views.decorators.csrf import ensure_csrf_cookie
 
+from orthoaget.session import OrthoASession
+from .models import ProsthesisRecord
 from . import loading_state
 from .services import (
     get_proth_sorted_records,
@@ -55,14 +58,20 @@ COLUMNS = [
 _refresh_lock = threading.Lock()
 _refresh_thread: threading.Thread | None = None
 
+_proth_cookies: list[dict] = []
+
+_pending_acts: dict[str, dict] = {}
+_pending_acts_lock = threading.Lock()
+
 
 def _run_refresh() -> None:
-    global _refresh_thread
+    global _refresh_thread, _proth_cookies
     try:
         def progress(text: str, percent: int) -> None:
             loading_state.update(True, text, percent)
 
-        refresh_proth_records_from_external(progress_cb=progress)
+        result = refresh_proth_records_from_external(progress_cb=progress)
+        _proth_cookies = result.get("cookies", [])
         loading_state.update(False, "Chargement terminé", 100)
     except Exception as exc:
         loading_state.update(False, "", 0, error=str(exc))
@@ -196,6 +205,42 @@ def sync_records_view(request):
         _start_refresh_if_idle()
         return JsonResponse({"ok": True, "started": True})
     except Exception as exc:
+        return JsonResponse({"error": str(exc)}, status=500)
+
+
+@require_POST
+def fetch_act_view(request):
+    """Phase 2: fetch act form data from OrthoAdvance and store pending confirmation."""
+    url = request.POST.get("url", "").strip()
+    if not url:
+        return JsonResponse({"error": "URL manquante"}, status=400)
+    if not _proth_cookies:
+        return JsonResponse({"error": "Session expirée — veuillez rafraîchir les données."}, status=409)
+    try:
+        form_data, form_display, is_expired = OrthoASession.fetch_act(url, _proth_cookies)
+    except Exception as exc:
+        return JsonResponse({"error": str(exc)}, status=500)
+    if is_expired:
+        return JsonResponse({"expired": True})
+    session_id = str(uuid.uuid4())
+    with _pending_acts_lock:
+        _pending_acts[session_id] = {"url": url, "form_data": form_data}
+    return JsonResponse({"session_id": session_id, "form_display": form_display})
+
+
+@require_POST
+def confirm_act_view(request):
+    """Phase 3: POST to OrthoAdvance to mark act as done."""
+    session_id = request.POST.get("session_id", "").strip()
+    with _pending_acts_lock:
+        pending = _pending_acts.pop(session_id, None)
+    if not pending:
+        return JsonResponse({"error": "Session introuvable ou déjà utilisée."}, status=400)
+    try:
+        OrthoASession.confirm_act_done(pending["url"], _proth_cookies, pending["form_data"])
+        ProsthesisRecord.objects.filter(url=pending["url"]).delete()
+        return JsonResponse({"ok": True})
+    except RuntimeError as exc:
         return JsonResponse({"error": str(exc)}, status=500)
 
 

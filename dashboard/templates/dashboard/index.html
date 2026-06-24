@@ -409,7 +409,7 @@
 <div class="page-header">
   <h1>
     Actes prothésistes
-    <span class="badge">
+    <span class="badge" id="record-count">
       {{ records|length }} enregistrement{{ records|length|pluralize }}
     </span>
   </h1>
@@ -493,7 +493,11 @@
           </td>
           <td>
             {% if record.url %}
-              <a href="#" onclick="showClosurePreview('{{ record.url }}'); return false;"
+              <a href="#"
+                 data-url="{{ record.url }}"
+                 data-patient="{{ record.patient }}"
+                 data-color="{{ colors|get_item:record.procedure|default:'#ffffff' }}"
+                 onclick="showClosurePreview(this); return false;"
                  style="color:#dc2626;font-size:0.8rem;">Fermer l'acte</a>
             {% else %}—{% endif %}
           </td>
@@ -509,11 +513,11 @@
 
 <!-- Color configuration modal -->
 <div class="modal-backdrop" id="colorModal">
-  <div class="modal">
+  <div class="modal" style="display:flex;flex-direction:column;max-height:80vh;">
     <h2>Couleurs par acte</h2>
-    <div id="colorList"></div>
-    <p class="save-status" id="saveStatus"></p>
-    <div class="modal-actions">
+    <div id="colorList" style="overflow-y:auto;flex:1;"></div>
+    <p class="save-status" id="saveStatus" style="flex-shrink:0;"></p>
+    <div class="modal-actions" style="flex-shrink:0;">
       <button class="btn-cancel" onclick="closeColorsModal()">Annuler</button>
       <button class="btn-ok" onclick="saveAndClose()">OK</button>
     </div>
@@ -536,23 +540,17 @@
   </div>
 </div>
 
-<!-- Closure preview modal -->
+<!-- Closure confirmation modal -->
 <div class="modal-backdrop" id="closureModal" onclick="if(event.target===this)closeClosureModal()">
-  <div class="modal">
-    <h2>Aperçu — Fermer l'acte (test)</h2>
-    <p style="font-size:0.85rem;color:#6b7280;margin-bottom:1rem;">
-      Le POST suivant serait envoyé à OrthoAdvance. Aucune action n'est exécutée.
-    </p>
-    <table style="width:100%;font-size:0.85rem;border-collapse:collapse;">
-      <tr><td style="padding:4px 8px;font-weight:600;white-space:nowrap">URL</td>
-          <td id="closurePostUrl" style="padding:4px 8px;word-break:break-all;font-family:monospace"></td></tr>
-      <tr><td style="padding:4px 8px;font-weight:600">ids</td>
-          <td id="closurePostIds" style="padding:4px 8px;font-family:monospace"></td></tr>
-      <tr><td style="padding:4px 8px;font-weight:600">action</td>
-          <td style="padding:4px 8px;font-family:monospace">set_actes_as_done</td></tr>
+  <div class="modal" id="closureModalInner" style="border-top:5px solid #e5e7eb;">
+    <div id="closurePatient" style="font-size:1.25rem;font-weight:700;color:#111827;margin-bottom:0.2rem;"></div>
+    <div id="closureActName" style="font-size:1.1rem;font-weight:600;color:#374151;margin-bottom:1rem;"></div>
+    <table id="closureDetails" style="width:100%;font-size:0.875rem;border-collapse:collapse;margin-bottom:1rem;">
     </table>
-    <div class="modal-actions">
-      <button class="btn-ok" onclick="closeClosureModal()">Fermer</button>
+    <p id="closureModalMsg" style="font-size:0.85rem;color:#6b7280;margin:0 0 0.5rem;min-height:1.2em;"></p>
+    <div class="modal-actions" id="closureActions">
+      <button class="btn-cancel" onclick="closeClosureModal()">Annuler</button>
+      <button class="btn-ok" id="closureBtnValidate" onclick="confirmClosureAct()">Valider</button>
     </div>
   </div>
 </div>
@@ -662,7 +660,7 @@
       applyFilters();
     };
 
-    function applyFilters() {
+    window.applyFilters = function applyFilters() {
       const prosthetistFilter = selectEl.value;
       document.querySelectorAll("tbody tr").forEach(row => {
         if (row.querySelector(".empty")) return;
@@ -835,17 +833,135 @@
 
   }); // end DOMContentLoaded
 
-  window.showClosurePreview = function (actUrl) {
-    const parsed = new URL(actUrl);
-    document.getElementById("closurePostUrl").textContent =
-      parsed.origin + "/medical/prothesiste/planning";
-    document.getElementById("closurePostIds").textContent = parsed.pathname;
-    document.getElementById("closureModal").style.display = "flex";
+  let _closureSessionId = null;
+
+  function _isoToFrenchDate(d) {
+    if (!d) return "—";
+    const m = d.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    return m ? `${m[3]}/${m[2]}/${m[1]}` : d;
+  }
+
+  function _formatActDtime(dtime) {
+    if (!dtime) return "—";
+    const m = dtime.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+    return m ? `${m[3]}/${m[2]}/${m[1]} ${m[4]}:${m[5]}` : dtime;
+  }
+
+  window.showClosurePreview = async function (linkEl) {
+    const actUrl  = linkEl.dataset.url;
+    const patient = linkEl.dataset.patient;
+    const color   = linkEl.dataset.color || "#e5e7eb";
+
+    linkEl.textContent = "Chargement…";
+    linkEl.style.pointerEvents = "none";
+    try {
+      const resp = await fetch("{% url 'fetch_act' %}", {
+        method: "POST",
+        headers: {"X-CSRFToken": getCsrfToken(), "Content-Type": "application/x-www-form-urlencoded"},
+        body: "url=" + encodeURIComponent(actUrl),
+      });
+      const data = await resp.json();
+
+      if (data.expired) {
+        alert("Session OrthoAdvance expirée. Veuillez rafraîchir les données (bouton 🔄).");
+        return;
+      }
+      if (data.error) {
+        alert("Erreur : " + data.error);
+        return;
+      }
+
+      _closureSessionId = data.session_id;
+      const fd = data.form_display || {};
+
+      document.getElementById("closureModalInner").style.borderTopColor = color;
+      document.getElementById("closurePatient").textContent = patient;
+      document.getElementById("closureActName").textContent = fd["acte_prothesiste"] || "—";
+
+      const sendDate    = fd["send_date_french"]    || _isoToFrenchDate(fd["send_date"]);
+      const receiptDate = fd["receipt_date_french"] || _isoToFrenchDate(fd["receipt_date"]);
+      const rdvDate     = _formatActDtime(fd["acte_dtime"]);
+      const prothName   = fd["prothesiste"] || "—";
+
+      const rows = [
+        ["Envoi",        sendDate],
+        ["Réception",    receiptDate],
+        ["RDV",          rdvDate],
+        ["Prothésiste",  prothName],
+      ];
+      const table = document.getElementById("closureDetails");
+      table.innerHTML = rows.map(([label, val]) =>
+        `<tr>
+           <td style="padding:3px 10px 3px 0;font-weight:600;white-space:nowrap;color:#6b7280">${label}</td>
+           <td style="padding:3px 0">${val}</td>
+         </tr>`
+      ).join("");
+
+      document.getElementById("closureModalMsg").textContent = "";
+      document.getElementById("closureBtnValidate").disabled = false;
+      document.getElementById("closureActions").style.display = "";
+      document.getElementById("closureModal").style.display = "flex";
+    } catch (e) {
+      alert("Erreur réseau : " + e);
+    } finally {
+      linkEl.textContent = "Fermer l'acte";
+      linkEl.style.pointerEvents = "";
+    }
   };
 
+  window.confirmClosureAct = async function () {
+    if (!_closureSessionId) return;
+    document.getElementById("closureBtnValidate").disabled = true;
+    document.getElementById("closureModalMsg").textContent = "Envoi en cours…";
+    try {
+      const resp = await fetch("{% url 'confirm_act' %}", {
+        method: "POST",
+        headers: {"X-CSRFToken": getCsrfToken(), "Content-Type": "application/x-www-form-urlencoded"},
+        body: "session_id=" + encodeURIComponent(_closureSessionId),
+      });
+      const data = await resp.json();
+      if (data.ok) {
+        _closureSessionId = null;
+        closeClosureModal();
+        await _refreshTableFromServer();
+      } else {
+        document.getElementById("closureModalMsg").textContent = "Erreur : " + (data.error ?? "inconnue");
+        document.getElementById("closureBtnValidate").disabled = false;
+      }
+    } catch (e) {
+      document.getElementById("closureModalMsg").textContent = "Erreur réseau : " + e;
+      document.getElementById("closureBtnValidate").disabled = false;
+    }
+  };
+
+  async function _refreshTableFromServer() {
+    try {
+      const resp = await fetch(window.location.href, {headers: {"X-Requested-With": "XMLHttpRequest"}});
+      const html = await resp.text();
+      const doc = new DOMParser().parseFromString(html, "text/html");
+      const newTbody = doc.querySelector("tbody");
+      const curTbody = document.querySelector("tbody");
+      if (newTbody && curTbody) {
+        curTbody.innerHTML = newTbody.innerHTML;
+        if (window.applyFilters) window.applyFilters();
+      }
+      const newBadge = doc.getElementById("record-count");
+      const curBadge = document.getElementById("record-count");
+      if (newBadge && curBadge) curBadge.textContent = newBadge.textContent;
+    } catch (e) {
+      console.warn("Rafraîchissement du tableau échoué :", e);
+    }
+  }
+
   window.closeClosureModal = function () {
+    _closureSessionId = null;
     document.getElementById("closureModal").style.display = "";
   };
+
+  function getCsrfToken() {
+    return document.cookie.split(";").map(c => c.trim())
+      .find(c => c.startsWith("csrftoken="))?.split("=")[1] ?? "";
+  }
 </script>
 
 </body>

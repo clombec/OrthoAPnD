@@ -9,6 +9,8 @@ urlpatterns = [
     path("proth/save-colors/", views.save_colors_view, name="save_colors"),
     path("proth/sync/", views.sync_records_view, name="sync_records"),
     path("proth/loading-status/", views.loading_status_view, name="loading_status"),
+    path("proth/fetch-act/", views.fetch_act_view, name="fetch_act"),
+    path("proth/confirm-act/", views.confirm_act_view, name="confirm_act"),
 
     # Intra (PIN-protected)
     path("intra/", views.intra_pin_view, name="intra_pin"),
