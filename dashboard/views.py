@@ -58,20 +58,18 @@ COLUMNS = [
 _refresh_lock = threading.Lock()
 _refresh_thread: threading.Thread | None = None
 
-_proth_cookies: list[dict] = []
 
 _pending_acts: dict[str, dict] = {}
 _pending_acts_lock = threading.Lock()
 
 
 def _run_refresh() -> None:
-    global _refresh_thread, _proth_cookies
+    global _refresh_thread
     try:
         def progress(text: str, percent: int) -> None:
             loading_state.update(True, text, percent)
 
-        result = refresh_proth_records_from_external(progress_cb=progress)
-        _proth_cookies = result.get("cookies", [])
+        refresh_proth_records_from_external(progress_cb=progress)
         loading_state.update(False, "Chargement terminé", 100)
     except Exception as exc:
         loading_state.update(False, "", 0, error=str(exc))
@@ -214,10 +212,9 @@ def fetch_act_view(request):
     url = request.POST.get("url", "").strip()
     if not url:
         return JsonResponse({"error": "URL manquante"}, status=400)
-    if not _proth_cookies:
-        return JsonResponse({"error": "Session expirée — veuillez rafraîchir les données."}, status=409)
     try:
-        form_data, form_display, is_expired = OrthoASession.fetch_act(url, _proth_cookies)
+        with OrthoASession() as session:
+            form_data, form_display, is_expired = session.fetch_act(url)
     except Exception as exc:
         return JsonResponse({"error": str(exc)}, status=500)
     if is_expired:
@@ -237,7 +234,8 @@ def confirm_act_view(request):
     if not pending:
         return JsonResponse({"error": "Session introuvable ou déjà utilisée."}, status=400)
     try:
-        OrthoASession.confirm_act_done(pending["url"], _proth_cookies, pending["form_data"])
+        with OrthoASession() as session:
+            session.confirm_act_done(pending["url"], pending["form_data"])
         ProsthesisRecord.objects.filter(url=pending["url"]).delete()
         return JsonResponse({"ok": True})
     except RuntimeError as exc:
