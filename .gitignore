@@ -35,6 +35,7 @@ logs/
 # OS
 .DS_Store
 Thumbs.db
+stats*.json
 
 # Build / packaging
 dist/
