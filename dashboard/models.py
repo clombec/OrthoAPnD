@@ -44,30 +44,6 @@ class IncomeRecord(models.Model):
         return f"{self.date} — {self.amount} €"
 
 
-class EcheanceRecord(models.Model):
-    """
-    Daily snapshot of total outstanding echeances (sum of "Dû").
-    One record per day, updated on each refresh.
-    """
-    date   = models.DateField(unique=True)
-    amount = models.FloatField()
-
-    def __str__(self):
-        return f"{self.date} — {self.amount} €"
-
-
-class PrevisionRecord(models.Model):
-    """
-    Daily forecasted income aggregated from echeances by due date.
-    One record per due date; fully replaced on each refresh.
-    """
-    date   = models.DateField(unique=True)
-    amount = models.FloatField()
-
-    def __str__(self):
-        return f"{self.date} — {self.amount} €"
-
-
 # ── Planning / Journées types ─────────────────────────────────────────────────
 
 class JourneeType(models.Model):
