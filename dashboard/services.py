@@ -93,27 +93,6 @@ def get_available_year_range():
 def get_income_comparison(year1: int, year2: int) -> list[dict]:
     return income_services.get_income_comparison(year1=year1, year2=year2)
 
-def get_echeances_by_month(year: int, month: int) -> list[dict]:
-    return income_services.get_echeances_by_month(year=year, month=month)
-
-def refresh_previsions_from_external(progress_cb=None) -> dict:
-    return income_services.refresh_previsions_from_external(progress_cb=progress_cb)
-
-def get_available_prevision_month_range():
-    return income_services.get_available_prevision_month_range()
-
-def get_available_prevision_year_range():
-    return income_services.get_available_prevision_year_range()
-
-def get_income_and_previsions_by_month(year: int, month: int) -> list[dict]:
-    return income_services.get_income_and_previsions_by_month(year=year, month=month)
-
-def get_income_and_previsions_by_year(year: int) -> list[dict]:
-    return income_services.get_income_and_previsions_by_year(year=year)
-
-def get_income_and_previsions_all_years() -> list[dict]:
-    return income_services.get_income_and_previsions_all_years()
-
 
 # ── Planning (journées types) ─────────────────────────────────────────────────
 

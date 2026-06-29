@@ -23,13 +23,6 @@ from .services import (
     get_available_month_range,
     get_available_year_range,
     get_income_comparison,
-    get_echeances_by_month,
-    refresh_previsions_from_external,
-    get_available_prevision_month_range,
-    get_available_prevision_year_range,
-    get_income_and_previsions_by_month,
-    get_income_and_previsions_by_year,
-    get_income_and_previsions_all_years,
     get_intra_pin,
     is_orthoaget_configured,
     setup_orthoaget,
@@ -319,11 +312,8 @@ def recettes_view(request):
         prev_year, prev_month = (year - 1, 12) if month == 1 else (year, month - 1)
         next_year, next_month = (year + 1,  1) if month == 12 else (year, month + 1)
 
-    echeances_data = get_echeances_by_month(year, month) if view_type == "daily" else []
-
     return render(request, "dashboard/recettes.html", {
-        "chart_data_json":     json.dumps(data),
-        "echeances_data_json": json.dumps(echeances_data),
+        "chart_data_json": json.dumps(data),
         "view_type":  view_type,
         "year":       year,
         "month":      month,
@@ -400,8 +390,7 @@ def recettes_data_view(request):
     else:
         data = get_income_by_month(year, month)
 
-    echeances_data = get_echeances_by_month(year, month) if view_type == "daily" else []
-    return JsonResponse({"data": data, "echeances_data": echeances_data})
+    return JsonResponse({"data": data})
 
 
 @require_intra_auth
@@ -430,123 +419,6 @@ def recettes_compare_view(request):
     })
 
 
-
-# ── Prévisions ────────────────────────────────────────────────────────────────
-
-_previsions_refresh_lock = threading.Lock()
-_previsions_refresh_thread: threading.Thread | None = None
-
-
-def _run_previsions_refresh() -> None:
-    global _previsions_refresh_thread
-    try:
-        def progress(text: str, percent: int) -> None:
-            loading_state.update(True, text, percent, name="previsions")
-
-        refresh_previsions_from_external(progress_cb=progress)
-        loading_state.update(False, "Chargement terminé", 100, name="previsions")
-    except Exception as exc:
-        loading_state.update(False, "", 0, error=str(exc), name="previsions")
-    finally:
-        with _previsions_refresh_lock:
-            _previsions_refresh_thread = None
-
-
-def _start_previsions_refresh_if_idle() -> bool:
-    global _previsions_refresh_thread
-    with _previsions_refresh_lock:
-        if _previsions_refresh_thread is not None:
-            return False
-        loading_state.update(True, "Démarrage du chargement…", 0, name="previsions")
-        _previsions_refresh_thread = threading.Thread(target=_run_previsions_refresh, daemon=True)
-        _previsions_refresh_thread.start()
-        return True
-
-
-@require_intra_auth
-def previsions_view(request):
-    from datetime import date
-    today = date.today()
-
-    view_type = request.GET.get("view", "daily")
-    if view_type not in ("daily", "monthly", "yearly"):
-        view_type = "daily"
-
-    year  = int(request.GET.get("year",  today.year))
-    month = int(request.GET.get("month", today.month))
-
-    has_prev = has_next = False
-    prev_year = prev_month = next_year = next_month = None
-
-    if view_type == "yearly":
-        data = get_income_and_previsions_all_years()
-
-    elif view_type == "monthly":
-        data = get_income_and_previsions_by_year(year)
-        year_range = get_available_prevision_year_range()
-        if year_range:
-            first_year, last_year = year_range
-            has_prev = year > first_year
-            has_next = year < last_year
-        prev_year, next_year = year - 1, year + 1
-        prev_month = next_month = month
-
-    else:  # daily
-        data = get_income_and_previsions_by_month(year, month)
-        month_range = get_available_prevision_month_range()
-        current_ym = f"{year:04d}-{month:02d}"
-        if month_range:
-            first_ym, last_ym = month_range
-            has_prev = current_ym > first_ym
-            has_next = current_ym < last_ym
-        prev_year, prev_month = (year - 1, 12) if month == 1 else (year, month - 1)
-        next_year, next_month = (year + 1,  1) if month == 12 else (year, month + 1)
-
-    return render(request, "dashboard/previsions.html", {
-        "chart_data_json": json.dumps(data),
-        "view_type":  view_type,
-        "year":       year,
-        "month":      month,
-        "month_name": MONTH_NAMES[month],
-        "has_prev":   has_prev,
-        "has_next":   has_next,
-        "prev_year":  prev_year,
-        "prev_month": prev_month,
-        "next_year":  next_year,
-        "next_month": next_month,
-    })
-
-
-@require_POST
-@require_intra_auth
-def previsions_refresh_view(request):
-    started = _start_previsions_refresh_if_idle()
-    return JsonResponse({"ok": True, "started": started})
-
-
-@require_GET
-@require_intra_auth
-def previsions_loading_status_view(request):
-    return JsonResponse(loading_state.get(name="previsions"))
-
-
-@require_GET
-@require_intra_auth
-def previsions_data_view(request):
-    from datetime import date
-    today = date.today()
-    view_type = request.GET.get("view", "daily")
-    year  = int(request.GET.get("year",  today.year))
-    month = int(request.GET.get("month", today.month))
-
-    if view_type == "yearly":
-        data = get_income_and_previsions_all_years()
-    elif view_type == "monthly":
-        data = get_income_and_previsions_by_year(year)
-    else:
-        data = get_income_and_previsions_by_month(year, month)
-
-    return JsonResponse({"data": data})
 
 
 # ── Planning ──────────────────────────────────────────────────────────────────
