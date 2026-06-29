@@ -39,6 +39,14 @@ from .services import (
     get_day_planning_with_jt,
     get_adjacent_dates,
     get_nearest_date,
+    is_stats_cache_available,
+    get_stats_cache_timestamp,
+    refresh_stats_from_external,
+    compute_analyse_data,
+    generate_csv_duree,
+    generate_csv_conversion,
+    generate_csv_funnel,
+    compute_prevision_data,
 )
 
 # Column definitions: (field_name, display_label)
@@ -622,6 +630,7 @@ def planning_loading_status_view(request):
 @require_GET
 @require_intra_auth
 def planning_data_view(request):
+
     from datetime import datetime
 
     # Day mode: ?date=YYYY-MM-DD[&jt=<name>]
@@ -641,3 +650,161 @@ def planning_data_view(request):
         "prev_date": prev_date.isoformat() if prev_date else None,
         "next_date": next_date.isoformat() if next_date else None,
     })
+
+
+# ── Analyse ortho (public) ────────────────────────────────────────────────────
+
+_stats_refresh_lock   = threading.Lock()
+_stats_refresh_thread: threading.Thread | None = None
+
+
+def _run_stats_refresh() -> None:
+    global _stats_refresh_thread
+    try:
+        def progress(text: str, percent: int) -> None:
+            loading_state.update(True, text, percent, name="stats")
+
+        refresh_stats_from_external(progress_cb=progress)
+        loading_state.update(False, "Chargement terminé", 100, name="stats")
+    except Exception as exc:
+        loading_state.update(False, "", 0, error=str(exc), name="stats")
+    finally:
+        with _stats_refresh_lock:
+            _stats_refresh_thread = None
+
+
+def _start_stats_refresh_if_idle() -> bool:
+    global _stats_refresh_thread
+    with _stats_refresh_lock:
+        if _stats_refresh_thread is not None:
+            return False
+        loading_state.update(True, "Démarrage du chargement…", 0, name="stats")
+        _stats_refresh_thread = threading.Thread(target=_run_stats_refresh, daemon=True)
+        _stats_refresh_thread.start()
+        return True
+
+
+def analyse_view(request):
+    cache_ok  = is_stats_cache_available()
+    timestamp = get_stats_cache_timestamp()
+    state     = loading_state.get(name="stats")
+    return render(request, "dashboard/analyse.html", {
+        "cache_available": cache_ok,
+        "timestamp":       timestamp,
+        "is_loading":      state["loading"],
+        "loading_text":    state["text"],
+        "loading_percent": state["percent"],
+        "loading_error":   state["error"],
+    })
+
+
+@require_POST
+def analyse_refresh_view(request):
+    started = _start_stats_refresh_if_idle()
+    return JsonResponse({"ok": True, "started": started})
+
+
+@require_GET
+def analyse_loading_status_view(request):
+    return JsonResponse(loading_state.get(name="stats"))
+
+
+@require_GET
+def analyse_data_view(request):
+    if not is_stats_cache_available():
+        return JsonResponse({"error": "Aucune donnée disponible. Lancez un chargement."}, status=404)
+    try:
+        data = compute_analyse_data()
+        # Don't send raw rows in the API response (too large)
+        data.pop("_raw", None)
+        return JsonResponse(data)
+    except Exception as exc:
+        return JsonResponse({"error": str(exc)}, status=500)
+
+
+@require_GET
+def analyse_download_csv_view(request, report: str):
+    GENERATORS = {
+        "duree":      (generate_csv_duree,      "duree_traitement.csv"),
+        "conversion": (generate_csv_conversion, "taux_conversion.csv"),
+        "funnel":     (generate_csv_funnel,     "funnel_cs.csv"),
+    }
+    if report not in GENERATORS:
+        return JsonResponse({"error": "Rapport inconnu"}, status=400)
+    if not is_stats_cache_available():
+        return JsonResponse({"error": "Aucune donnée disponible"}, status=404)
+
+    from django.http import HttpResponse
+    fn, filename = GENERATORS[report]
+    try:
+        content = fn()
+    except Exception as exc:
+        return JsonResponse({"error": str(exc)}, status=500)
+
+    # Prepend UTF-8 BOM so Excel opens the file correctly
+    response = HttpResponse("﻿" + content, content_type="text/csv; charset=utf-8-sig")
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    return response
+
+
+# ── Stats CA (intra) ──────────────────────────────────────────────────────────
+
+@require_intra_auth
+def stats_ca_view(request):
+    cache_ok  = is_stats_cache_available()
+    timestamp = get_stats_cache_timestamp()
+    state     = loading_state.get(name="stats")
+    return render(request, "dashboard/stats_ca.html", {
+        "cache_available": cache_ok,
+        "timestamp":       timestamp,
+        "is_loading":      state["loading"],
+        "loading_text":    state["text"],
+        "loading_percent": state["percent"],
+        "loading_error":   state["error"],
+    })
+
+
+@require_GET
+@require_intra_auth
+def stats_ca_data_view(request):
+    if not is_stats_cache_available():
+        return JsonResponse({"error": "Aucune donnée disponible. Lancez un chargement."}, status=404)
+
+    def _float(key, default):
+        try:
+            return float(request.GET[key])
+        except (KeyError, ValueError):
+            return default
+
+    def _int(key, default):
+        try:
+            return int(request.GET[key])
+        except (KeyError, ValueError):
+            return default
+
+    cfg = {
+        "bilans_sem": _float("bilans_sem", 4.21),
+        "sem_trav":   _int("sem_trav",     42),
+        "taux_conv":  _float("taux_conv",  0.845),
+        "duree_ttt":  _float("duree_ttt",  5.10),
+        "mois":       _int("mois",         36),
+    }
+
+    try:
+        data = compute_prevision_data(cfg=cfg)
+        return JsonResponse(data)
+    except Exception as exc:
+        return JsonResponse({"error": str(exc)}, status=500)
+
+
+@require_POST
+@require_intra_auth
+def stats_ca_refresh_view(request):
+    started = _start_stats_refresh_if_idle()
+    return JsonResponse({"ok": True, "started": started})
+
+
+@require_GET
+@require_intra_auth
+def stats_ca_loading_status_view(request):
+    return JsonResponse(loading_state.get(name="stats"))

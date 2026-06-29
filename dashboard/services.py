@@ -6,6 +6,8 @@ from orthoaget import PROJECT_ROOT
 import dashboard.app_services.proth_services as proth_services
 import dashboard.app_services.income_services as income_services
 import dashboard.app_services.calendar_services as calendar_services
+import dashboard.app_services.stats_services as stats_services
+import dashboard.app_services.prevision_ca_services as prevision_ca_services
 
 SORTABLE_FIELDS = proth_services.SORTABLE_FIELDS
 
@@ -138,3 +140,33 @@ def get_adjacent_dates(day_date):
 
 def get_nearest_date(ref):
     return calendar_services.get_nearest_date(ref)
+
+
+# ── Stats ortho (analyse) ─────────────────────────────────────────────────────
+
+def is_stats_cache_available() -> bool:
+    return stats_services.is_cache_available()
+
+def get_stats_cache_timestamp() -> str | None:
+    return stats_services.get_cache_timestamp()
+
+def refresh_stats_from_external(progress_cb=None) -> None:
+    return stats_services.refresh_from_external(progress_cb=progress_cb)
+
+def compute_analyse_data() -> dict:
+    return stats_services.compute_analyse_data()
+
+def generate_csv_duree() -> str:
+    return stats_services.generate_csv_duree()
+
+def generate_csv_conversion() -> str:
+    return stats_services.generate_csv_conversion()
+
+def generate_csv_funnel() -> str:
+    return stats_services.generate_csv_funnel()
+
+
+# ── Prévisions CA ─────────────────────────────────────────────────────────────
+
+def compute_prevision_data(cfg: dict | None = None) -> dict:
+    return prevision_ca_services.compute_prevision_data(cfg=cfg)

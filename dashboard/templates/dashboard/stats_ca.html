@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Prévisions CA — Intranet</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #222325;
+      color: #f8f9fb;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      padding: 1.5rem;
+      gap: 1.5rem;
+    }
+
+    /* ── Top bar ── */
+    .top-bar { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+    .top-bar h1 { font-size: 1.3rem; font-weight: 700; flex: 1; }
+
+    .btn {
+      background: none;
+      border: 1.5px solid #3a3d44;
+      border-radius: 8px;
+      padding: 0.45rem 0.85rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      font-family: inherit;
+      color: #9ca3af;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      transition: border-color 0.2s, color 0.2s;
+    }
+    .btn:hover { border-color: #6b92e4; color: #f8f9fb; }
+    .btn-primary { border-color: #6b92e4; color: #6b92e4; }
+    .btn-primary:hover { background: rgba(107,146,228,0.12); color: #f8f9fb; }
+    .btn-disabled { opacity: 0.4; cursor: not-allowed; pointer-events: none; }
+
+    .timestamp { font-size: 0.78rem; color: #6b7280; }
+
+    /* ── Loading bar ── */
+    .loading-bar-wrap {
+      background: #2d2f33;
+      border: 1.5px solid #3a3d44;
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      display: none;
+    }
+    .loading-bar-wrap.visible { display: block; }
+    .loading-label { font-size: 0.85rem; color: #9ca3af; margin-bottom: 0.5rem; }
+    .loading-bar-bg { background: #3a3d44; border-radius: 4px; height: 6px; overflow: hidden; }
+    .loading-bar-fill {
+      background: #6b92e4; height: 100%; width: 0%;
+      transition: width 0.4s ease; border-radius: 4px;
+    }
+
+    /* ── Params panel ── */
+    .params-panel {
+      background: #2d2f33;
+      border: 1.5px solid #3a3d44;
+      border-radius: 12px;
+      padding: 1rem 1.25rem;
+    }
+
+    .params-title {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #6b7280;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.75rem;
+    }
+
+    .params-grid {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      align-items: flex-end;
+    }
+
+    .param-field { display: flex; flex-direction: column; gap: 0.3rem; }
+    .param-field label { font-size: 0.75rem; color: #9ca3af; }
+
+    .param-field input {
+      background: #222325;
+      border: 1.5px solid #3a3d44;
+      border-radius: 6px;
+      padding: 0.4rem 0.6rem;
+      font-size: 0.85rem;
+      font-family: inherit;
+      color: #f8f9fb;
+      width: 100px;
+      transition: border-color 0.2s;
+    }
+    .param-field input:focus { outline: none; border-color: #6b92e4; }
+
+    /* ── Empty state ── */
+    .empty-state { text-align: center; padding: 4rem 2rem; color: #6b7280; }
+    .empty-state p { margin-top: 0.75rem; font-size: 0.9rem; }
+
+    /* ── Stock info ── */
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 0.75rem;
+    }
+
+    .stat-card {
+      background: #222325;
+      border: 1px solid #3a3d44;
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+    }
+    .stat-label { font-size: 0.72rem; color: #6b7280; text-transform: uppercase; letter-spacing: 0.04em; }
+    .stat-value { font-size: 1.35rem; font-weight: 700; color: #f8f9fb; margin-top: 0.2rem; }
+    .stat-unit  { font-size: 0.72rem; color: #9ca3af; font-weight: 400; }
+
+    /* ── Section ── */
+    .section {
+      background: #2d2f33;
+      border: 1.5px solid #3a3d44;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid #3a3d44;
+    }
+
+    .section-title { font-size: 1rem; font-weight: 700; }
+
+    .section-body { padding: 1.25rem; display: flex; flex-direction: column; gap: 1.25rem; }
+
+    /* ── Tables ── */
+    .table-wrap { overflow-x: auto; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+
+    th {
+      text-align: right;
+      padding: 0.5rem 0.75rem;
+      color: #6b7280;
+      font-weight: 600;
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      border-bottom: 1px solid #3a3d44;
+      white-space: nowrap;
+    }
+    th:first-child { text-align: left; }
+
+    td {
+      padding: 0.45rem 0.75rem;
+      border-bottom: 1px solid #2d2f33;
+      color: #d1d5db;
+      white-space: nowrap;
+      text-align: right;
+    }
+    td:first-child { text-align: left; }
+
+    tr:last-child td { border-bottom: none; }
+
+    tr.month-sep td { border-top: 1.5px solid #3a3d44; }
+    tr.year-row td { background: #28292d; font-weight: 700; color: #f8f9fb; }
+
+    /* ── Jalons ── */
+    .jalons { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+    .jalon {
+      background: #222325;
+      border: 1px solid #3a3d44;
+      border-radius: 8px;
+      padding: 0.65rem 1rem;
+      font-size: 0.82rem;
+    }
+    .jalon-label { color: #9ca3af; }
+    .jalon-value { font-weight: 700; color: #6b92e4; }
+    .jalon-value.na { color: #6b7280; }
+  </style>
+</head>
+<body>
+
+  <!-- Top bar -->
+  <div class="top-bar">
+    <a href="{% url 'intra_landing' %}" class="btn">← Intranet</a>
+    <h1>Prévisions CA</h1>
+    {% if timestamp %}
+      <span class="timestamp">Données du {{ timestamp|slice:":10" }} à {{ timestamp|slice:"11:16" }}</span>
+    {% endif %}
+    <button class="btn btn-primary" id="btn-refresh">⟳ Actualiser les données</button>
+  </div>
+
+  <!-- Loading bar -->
+  <div class="loading-bar-wrap{% if is_loading %} visible{% endif %}" id="loading-wrap">
+    <div class="loading-label" id="loading-label">{{ loading_text|default:"Chargement en cours…" }}</div>
+    <div class="loading-bar-bg">
+      <div class="loading-bar-fill" id="loading-fill" style="width:{{ loading_percent }}%"></div>
+    </div>
+  </div>
+
+  <!-- Params -->
+  <div class="params-panel">
+    <div class="params-title">Paramètres de projection</div>
+    <div class="params-grid">
+      <div class="param-field">
+        <label>Bilans / sem. trav.</label>
+        <input type="number" id="p-bilans" value="4.21" step="0.1" min="0" max="20">
+      </div>
+      <div class="param-field">
+        <label>Semaines trav. / an</label>
+        <input type="number" id="p-sem" value="42" step="1" min="1" max="52">
+      </div>
+      <div class="param-field">
+        <label>Taux conv. bilan→ttt</label>
+        <input type="number" id="p-conv" value="0.845" step="0.01" min="0" max="1">
+      </div>
+      <div class="param-field">
+        <label>Durée moy. ttt (sem.)</label>
+        <input type="number" id="p-duree" value="5.10" step="0.1" min="0" max="20">
+      </div>
+      <div class="param-field">
+        <label>Mois à projeter</label>
+        <input type="number" id="p-mois" value="36" step="6" min="6" max="60">
+      </div>
+      <button class="btn btn-primary" id="btn-compute">Calculer</button>
+    </div>
+  </div>
+
+  <!-- Content -->
+  <div id="content-area">
+  {% if not cache_available %}
+    <div class="empty-state">
+      <div style="font-size:2.5rem;">📈</div>
+      <p>Aucune donnée disponible.</p>
+      <p>Cliquez sur <strong>Actualiser les données</strong> pour télécharger depuis OrthoAdvance.</p>
+    </div>
+  {% else %}
+    <div id="sections"></div>
+  {% endif %}
+  </div>
+
+  <script>
+  const CACHE_AVAILABLE = {{ cache_available|yesno:"true,false" }};
+
+  // ── Refresh ──────────────────────────────────────────────────────────────
+  document.getElementById('btn-refresh').addEventListener('click', async () => {
+    document.getElementById('btn-refresh').classList.add('btn-disabled');
+    await fetch("{% url 'stats_ca_refresh' %}", {
+      method: 'POST',
+      headers: {'X-CSRFToken': getCsrf()},
+    });
+    startPolling();
+  });
+
+  document.getElementById('btn-compute').addEventListener('click', () => {
+    if (CACHE_AVAILABLE) loadAndRender();
+  });
+
+  function getCsrf() {
+    const m = document.cookie.match(/csrftoken=([^;]+)/);
+    return m ? m[1] : '';
+  }
+
+  let pollTimer = null;
+
+  function startPolling() {
+    showLoading('Démarrage…', 0);
+    if (pollTimer) clearInterval(pollTimer);
+    pollTimer = setInterval(checkStatus, 1200);
+  }
+
+  async function checkStatus() {
+    const res  = await fetch("{% url 'stats_ca_loading_status' %}");
+    const data = await res.json();
+    if (data.loading) {
+      showLoading(data.text, data.percent);
+    } else {
+      clearInterval(pollTimer);
+      pollTimer = null;
+      hideLoading();
+      document.getElementById('btn-refresh').classList.remove('btn-disabled');
+      if (!data.error) {
+        await loadAndRender();
+      } else {
+        alert('Erreur : ' + data.error);
+      }
+    }
+  }
+
+  function showLoading(text, pct) {
+    document.getElementById('loading-wrap').classList.add('visible');
+    document.getElementById('loading-label').textContent = text;
+    document.getElementById('loading-fill').style.width = pct + '%';
+  }
+
+  function hideLoading() {
+    document.getElementById('loading-wrap').classList.remove('visible');
+  }
+
+  {% if is_loading %}startPolling();{% endif %}
+
+  // ── Data fetch + render ──────────────────────────────────────────────────
+  async function loadAndRender() {
+    const params = new URLSearchParams({
+      bilans_sem: document.getElementById('p-bilans').value,
+      sem_trav:   document.getElementById('p-sem').value,
+      taux_conv:  document.getElementById('p-conv').value,
+      duree_ttt:  document.getElementById('p-duree').value,
+      mois:       document.getElementById('p-mois').value,
+    });
+    const res = await fetch("{% url 'stats_ca_data' %}?" + params);
+    if (!res.ok) {
+      const e = await res.json();
+      document.getElementById('sections').innerHTML =
+        `<div class="empty-state"><p>${e.error || 'Erreur inconnue'}</p></div>`;
+      return;
+    }
+    const data = await res.json();
+    renderAll(data);
+  }
+
+  if (CACHE_AVAILABLE) loadAndRender();
+
+  // ── Renderers ────────────────────────────────────────────────────────────
+
+  function fmt(v) {
+    return Number(Math.round(v || 0)).toLocaleString('fr-FR');
+  }
+
+  function renderAll(data) {
+    const el = document.getElementById('sections');
+    el.innerHTML = '';
+
+    // Stock info
+    const si = data.stock_info;
+    const grid = document.createElement('div');
+    grid.className = 'stat-grid';
+    grid.style.marginBottom = '1rem';
+    [
+      [si.nb_ttt,       'En traitement', ''],
+      [si.nb_cont1 + si.nb_cont2, 'Contention', ''],
+      [si.nb_surv,      'Surveillance', ''],
+      [si.nb_sans_date, 'Sans date détectable', ''],
+    ].forEach(([v, lbl]) => {
+      grid.insertAdjacentHTML('beforeend', `
+        <div class="stat-card">
+          <div class="stat-label">${lbl}</div>
+          <div class="stat-value">${v}</div>
+        </div>`);
+    });
+    el.appendChild(grid);
+
+    // Jalons
+    const jalonsWrap = document.createElement('div');
+    jalonsWrap.className = 'jalons';
+    jalonsWrap.style.marginBottom = '1rem';
+    data.jalons.forEach(j => {
+      const val = j.atteint ? `M+${j.mois_idx} (${j.mois})` : 'Non atteint';
+      jalonsWrap.insertAdjacentHTML('beforeend', `
+        <div class="jalon">
+          <span class="jalon-label">${fmt(j.cible)} €/mois : </span>
+          <span class="jalon-value ${j.atteint ? '' : 'na'}">${val}</span>
+        </div>`);
+    });
+    el.appendChild(jalonsWrap);
+
+    // Tableau mensuel
+    const secMois = mkSection('Projection mensuelle');
+    const colsMois = ['Mois', 'Stock', 'CA Forfaits', 'CA Cont.', 'CA Bilans', 'CA CS', 'CA Total', 'Échéances'];
+    const tMois = mkTable(colsMois);
+    let prevYear = null;
+    data.mensuel.forEach(r => {
+      const year = r.mois.slice(0, 4);
+      if (prevYear !== null && year !== prevYear) {
+        const sepRow = tMois.tbody.insertRow();
+        sepRow.className = 'month-sep';
+        colsMois.forEach(() => sepRow.insertCell());
+      }
+      prevYear = year;
+      tMois.tbody.insertAdjacentHTML('beforeend', `
+        <tr>
+          <td>${r.mois}</td>
+          <td>${fmt(r.stock_ttt)}</td>
+          <td>${fmt(r.ca_forfait)} €</td>
+          <td>${fmt(r.ca_contention)} €</td>
+          <td>${fmt(r.ca_bilans_actes)} €</td>
+          <td>${fmt(r.ca_cs_actes)} €</td>
+          <td><strong>${fmt(r.ca_total_projete)} €</strong></td>
+          <td>${r.ca_total_echeances !== null ? fmt(r.ca_total_echeances) + ' €' : '—'}</td>
+        </tr>`);
+    });
+    const twMois = document.createElement('div');
+    twMois.className = 'table-wrap';
+    twMois.appendChild(tMois.table);
+    secMois.body.appendChild(twMois);
+    el.appendChild(secMois.el);
+
+    // Résumé annuel
+    const secAn = mkSection('Résumé annuel');
+    const colsAn = ['Année', 'Stock fin', 'CA Forfaits', 'CA Cont.', 'CA Bilans', 'CA CS', 'CA Total', 'Moy. mensuelle'];
+    const tAn = mkTable(colsAn);
+    data.annuel.forEach(r => {
+      tAn.tbody.insertAdjacentHTML('beforeend', `
+        <tr class="year-row">
+          <td>${r.annee}</td>
+          <td>${fmt(r.stock_fin_annee)}</td>
+          <td>${fmt(r.ca_forfait)} €</td>
+          <td>${fmt(r.ca_contention)} €</td>
+          <td>${fmt(r.ca_bilans_actes)} €</td>
+          <td>${fmt(r.ca_cs_actes)} €</td>
+          <td>${fmt(r.ca_total_annuel)} €</td>
+          <td>${fmt(r.ca_moyen_mensuel)} €</td>
+        </tr>`);
+    });
+    const twAn = document.createElement('div');
+    twAn.className = 'table-wrap';
+    twAn.appendChild(tAn.table);
+    secAn.body.appendChild(twAn);
+    el.appendChild(secAn.el);
+  }
+
+  function mkSection(title) {
+    const el = document.createElement('div');
+    el.className = 'section';
+    el.style.marginBottom = '1.25rem';
+    const header = document.createElement('div');
+    header.className = 'section-header';
+    header.innerHTML = `<span class="section-title">${title}</span>`;
+    el.appendChild(header);
+    const body = document.createElement('div');
+    body.className = 'section-body';
+    el.appendChild(body);
+    return { el, body };
+  }
+
+  function mkTable(headers) {
+    const table = document.createElement('table');
+    const thead = document.createElement('thead');
+    const tr = document.createElement('tr');
+    headers.forEach(h => {
+      const th = document.createElement('th');
+      th.textContent = h;
+      tr.appendChild(th);
+    });
+    thead.appendChild(tr);
+    table.appendChild(thead);
+    const tbody = document.createElement('tbody');
+    table.appendChild(tbody);
+    return { table, tbody };
+  }
+  </script>
+
+</body>
+</html>

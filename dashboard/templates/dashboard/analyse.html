@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Analyse Ortho</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #222325;
+      color: #f8f9fb;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      padding: 1.5rem;
+      gap: 1.5rem;
+    }
+
+    /* ── Top bar ── */
+    .top-bar {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    .top-bar h1 {
+      font-size: 1.3rem;
+      font-weight: 700;
+      flex: 1;
+    }
+
+    .btn {
+      background: none;
+      border: 1.5px solid #3a3d44;
+      border-radius: 8px;
+      padding: 0.45rem 0.85rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      font-family: inherit;
+      color: #9ca3af;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      transition: border-color 0.2s, color 0.2s;
+    }
+    .btn:hover { border-color: #6b92e4; color: #f8f9fb; }
+    .btn-primary { border-color: #6b92e4; color: #6b92e4; }
+    .btn-primary:hover { background: rgba(107,146,228,0.12); color: #f8f9fb; }
+    .btn-disabled { opacity: 0.4; cursor: not-allowed; pointer-events: none; }
+
+    .timestamp {
+      font-size: 0.78rem;
+      color: #6b7280;
+    }
+
+    /* ── Loading bar ── */
+    .loading-bar-wrap {
+      background: #2d2f33;
+      border: 1.5px solid #3a3d44;
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      display: none;
+    }
+    .loading-bar-wrap.visible { display: block; }
+    .loading-label { font-size: 0.85rem; color: #9ca3af; margin-bottom: 0.5rem; }
+    .loading-bar-bg {
+      background: #3a3d44;
+      border-radius: 4px;
+      height: 6px;
+      overflow: hidden;
+    }
+    .loading-bar-fill {
+      background: #6b92e4;
+      height: 100%;
+      width: 0%;
+      transition: width 0.4s ease;
+      border-radius: 4px;
+    }
+
+    /* ── Empty state ── */
+    .empty-state {
+      text-align: center;
+      padding: 4rem 2rem;
+      color: #6b7280;
+    }
+    .empty-state p { margin-top: 0.75rem; font-size: 0.9rem; }
+
+    /* ── Sections ── */
+    .sections { display: flex; flex-direction: column; gap: 1.25rem; }
+
+    .section {
+      background: #2d2f33;
+      border: 1.5px solid #3a3d44;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid #3a3d44;
+      gap: 1rem;
+    }
+
+    .section-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #f8f9fb;
+    }
+
+    .section-body {
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    /* ── Stat grid ── */
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 0.75rem;
+    }
+
+    .stat-card {
+      background: #222325;
+      border: 1px solid #3a3d44;
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+    }
+
+    .stat-label { font-size: 0.72rem; color: #6b7280; text-transform: uppercase; letter-spacing: 0.04em; }
+    .stat-value { font-size: 1.35rem; font-weight: 700; color: #f8f9fb; margin-top: 0.2rem; }
+    .stat-unit  { font-size: 0.72rem; color: #9ca3af; font-weight: 400; }
+
+    /* ── Tables ── */
+    .table-wrap { overflow-x: auto; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.82rem;
+    }
+
+    th {
+      text-align: left;
+      padding: 0.5rem 0.75rem;
+      color: #6b7280;
+      font-weight: 600;
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      border-bottom: 1px solid #3a3d44;
+      white-space: nowrap;
+    }
+
+    td {
+      padding: 0.5rem 0.75rem;
+      border-bottom: 1px solid #2d2f33;
+      color: #d1d5db;
+      white-space: nowrap;
+    }
+
+    tr:last-child td { border-bottom: none; }
+
+    tr.highlight td { color: #f8f9fb; font-weight: 700; background: rgba(107,146,228,0.08); }
+
+    /* ── Bar spark ── */
+    .bar-wrap { display: flex; align-items: center; gap: 0.5rem; }
+    .bar-bg { flex: 1; background: #3a3d44; border-radius: 3px; height: 8px; }
+    .bar-fill { background: #6b92e4; height: 100%; border-radius: 3px; }
+
+    /* ── Download chips ── */
+    .download-chips { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+  </style>
+</head>
+<body>
+
+  <!-- Top bar -->
+  <div class="top-bar">
+    <a href="{% url 'landing' %}" class="btn">← Accueil</a>
+    <h1>Analyse Ortho</h1>
+    {% if timestamp %}
+      <span class="timestamp">Données du {{ timestamp|slice:":10" }} à {{ timestamp|slice:"11:16" }}</span>
+    {% endif %}
+    <button class="btn btn-primary" id="btn-refresh">⟳ Charger / Actualiser</button>
+  </div>
+
+  <!-- Loading bar -->
+  <div class="loading-bar-wrap{% if is_loading %} visible{% endif %}" id="loading-wrap">
+    <div class="loading-label" id="loading-label">{{ loading_text|default:"Chargement en cours…" }}</div>
+    <div class="loading-bar-bg">
+      <div class="loading-bar-fill" id="loading-fill" style="width:{{ loading_percent }}%"></div>
+    </div>
+  </div>
+
+  <!-- Content -->
+  <div id="content-area">
+  {% if not cache_available %}
+    <div class="empty-state" id="empty-state">
+      <div style="font-size:2.5rem;">📊</div>
+      <p>Aucune donnée disponible.</p>
+      <p>Cliquez sur <strong>Charger / Actualiser</strong> pour télécharger les données depuis OrthoAdvance.</p>
+    </div>
+  {% else %}
+    <div class="sections" id="sections"></div>
+    <div style="display:none" id="empty-state"></div>
+  {% endif %}
+  </div>
+
+  <script>
+  const CACHE_AVAILABLE = {{ cache_available|yesno:"true,false" }};
+
+  // ── Refresh ──────────────────────────────────────────────────────────────
+  document.getElementById('btn-refresh').addEventListener('click', async () => {
+    const btn = document.getElementById('btn-refresh');
+    btn.classList.add('btn-disabled');
+    await fetch("{% url 'analyse_refresh' %}", { method: 'POST', headers: {'X-CSRFToken': getCsrf()} });
+    startPolling();
+  });
+
+  function getCsrf() {
+    const m = document.cookie.match(/csrftoken=([^;]+)/);
+    return m ? m[1] : '';
+  }
+
+  // ── Loading polling ──────────────────────────────────────────────────────
+  let pollTimer = null;
+
+  function startPolling() {
+    showLoading('Démarrage…', 0);
+    if (pollTimer) clearInterval(pollTimer);
+    pollTimer = setInterval(checkStatus, 1200);
+  }
+
+  async function checkStatus() {
+    const res  = await fetch("{% url 'analyse_loading_status' %}");
+    const data = await res.json();
+    if (data.loading) {
+      showLoading(data.text, data.percent);
+    } else {
+      clearInterval(pollTimer);
+      pollTimer = null;
+      hideLoading();
+      document.getElementById('btn-refresh').classList.remove('btn-disabled');
+      if (!data.error) {
+        await loadAndRender();
+      } else {
+        alert('Erreur : ' + data.error);
+      }
+    }
+  }
+
+  function showLoading(text, pct) {
+    document.getElementById('loading-wrap').classList.add('visible');
+    document.getElementById('loading-label').textContent = text;
+    document.getElementById('loading-fill').style.width = pct + '%';
+  }
+
+  function hideLoading() {
+    document.getElementById('loading-wrap').classList.remove('visible');
+  }
+
+  // Auto-start polling if loading was already in progress on page load
+  {% if is_loading %}startPolling();{% endif %}
+
+  // ── Data fetch + render ──────────────────────────────────────────────────
+
+  function showError(msg) {
+    const el = document.getElementById('empty-state');
+    el.innerHTML = `<div style="font-size:2rem;">⚠️</div><p style="margin-top:.5rem;color:#f87171;">${msg}</p>`;
+    el.style.display = '';
+    const s = document.getElementById('sections');
+    if (s) s.innerHTML = '';
+  }
+
+  async function loadAndRender() {
+    try {
+      const res = await fetch("{% url 'analyse_data' %}");
+      if (!res.ok) {
+        let msg = `Erreur serveur (${res.status})`;
+        try { const j = await res.json(); if (j.error) msg += ' : ' + j.error; } catch(_) {}
+        showError(msg);
+        return;
+      }
+      const data = await res.json();
+      if (data.error) { showError(data.error); return; }
+      document.getElementById('empty-state').style.display = 'none';
+      renderAll(data);
+    } catch (e) {
+      showError('Erreur JS : ' + e.message);
+    }
+  }
+
+  if (CACHE_AVAILABLE) {
+    loadAndRender();
+  }
+
+  // ── Renderers ────────────────────────────────────────────────────────────
+
+  function renderAll(data) {
+    const el = document.getElementById('sections');
+    el.innerHTML = '';
+    try { el.appendChild(renderDuree(data.duree)); } catch(e) { el.appendChild(errCard('Durée', e)); }
+    try { el.appendChild(renderConversion(data.conversion)); } catch(e) { el.appendChild(errCard('Conversion', e)); }
+    try { el.appendChild(renderFunnel(data.funnel)); } catch(e) { el.appendChild(errCard('Funnel', e)); }
+  }
+
+  function errCard(title, e) {
+    const d = document.createElement('div');
+    d.className = 'section';
+    d.innerHTML = `<div class="section-header"><span class="section-title">⚠️ ${title}</span></div>
+      <div class="section-body"><p style="color:#f87171">${e.message}</p></div>`;
+    return d;
+  }
+
+  function h(tag, cls, content) {
+    const e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (content !== undefined) e.innerHTML = content;
+    return e;
+  }
+
+  function pct(v) { return (v || 0).toFixed(1) + ' %'; }
+  function sem(v) { return (v || 0).toFixed(2) + ' sem'; }
+  function fmt(v) { return Number(v || 0).toLocaleString('fr-FR'); }
+
+  // ─ 1. Durée ─────────────────────────────────────────────────────────────
+  function renderDuree(d) {
+    const sec = mkSection('1. Durée de traitement actif', 'duree');
+
+    if (d.error) {
+      sec.body.appendChild(h('p', null, `⚠️ ${d.error} (${d.n} patient(s) retenus)`));
+      if (d.exclus && d.exclus.length) {
+        const t = mkTable(['Raison d\'exclusion', 'N']);
+        d.exclus.forEach(r => t.tbody.insertAdjacentHTML('beforeend',
+          `<tr><td>${r.raison}</td><td>${r.count}</td></tr>`));
+        sec.body.appendChild(wrapTable(t.table, 'Raisons d\'exclusion'));
+      }
+      return sec.el;
+    }
+
+    // KPIs
+    const grid = h('div', 'stat-grid');
+    [[d.n, 'Patients', ''], [d.moy, 'Moyenne', 'sem'], [d.med, 'Médiane', 'sem'],
+     [d.sigma, 'Écart-type', 'sem'], [d.min, 'Min', 'sem'], [d.max, 'Max', 'sem'],
+     [d.q1, 'Q1', 'sem'], [d.q3, 'Q3', 'sem']].forEach(([v, lbl, unit]) => {
+      const card = h('div', 'stat-card');
+      card.innerHTML = `<div class="stat-label">${lbl}</div>
+        <div class="stat-value">${typeof v === 'number' ? v.toFixed(unit ? 2 : 0) : v}
+          <span class="stat-unit">${unit}</span></div>`;
+      grid.appendChild(card);
+    });
+    sec.body.appendChild(grid);
+
+    // Distribution
+    const maxCnt = Math.max(...d.distribution.map(r => r.count));
+    const distTable = mkTable(['Tranche', 'Patients', '%', '']);
+    d.distribution.forEach(r => {
+      distTable.tbody.insertAdjacentHTML('beforeend', `
+        <tr>
+          <td>${r.label}</td>
+          <td>${r.count}</td>
+          <td>${r.pct} %</td>
+          <td><div class="bar-wrap"><div class="bar-bg"><div class="bar-fill" style="width:${r.count/maxCnt*100}%"></div></div></div></td>
+        </tr>`);
+    });
+    sec.body.appendChild(wrapTable(distTable.table, 'Distribution'));
+
+    // Par groupe
+    const grpTable = mkTable(['Groupe', 'N', 'Moyenne', 'Médiane', 'σ']);
+    d.par_groupe.forEach(r => {
+      grpTable.tbody.insertAdjacentHTML('beforeend', `
+        <tr>
+          <td>${r.groupe}</td><td>${r.n}</td>
+          <td>${r.moy} sem</td><td>${r.med} sem</td><td>${r.sigma} sem</td>
+        </tr>`);
+    });
+    sec.body.appendChild(wrapTable(grpTable.table, 'Par groupe'));
+
+    // Par acte de dépose
+    const depTable = mkTable(['Acte de dépose', 'N', 'Moyenne']);
+    d.par_depose.forEach(r => {
+      depTable.tbody.insertAdjacentHTML('beforeend', `
+        <tr><td>${r.acte}</td><td>${r.count}</td><td>${r.moy} sem</td></tr>`);
+    });
+    sec.body.appendChild(wrapTable(depTable.table, 'Par acte de dépose'));
+
+    addDownload(sec.header, 'duree', 'CSV Durées');
+    return sec.el;
+  }
+
+  // ─ 2. Conversion ────────────────────────────────────────────────────────
+  function renderConversion(d) {
+    const sec = mkSection('2. Taux de conversion Bilan → Traitement', 'conversion');
+
+    const grid = h('div', 'stat-grid');
+    [
+      [d.total_eligible, 'Éligibles', ''],
+      [d.nb_converti, 'Convertis', ''],
+      [d.nb_non_converti, 'Non convertis', ''],
+      [d.nb_exclu, 'Exclus', ''],
+      [d.taux, 'Taux conversion', '%'],
+    ].forEach(([v, lbl, unit]) => {
+      const card = h('div', 'stat-card');
+      card.innerHTML = `<div class="stat-label">${lbl}</div>
+        <div class="stat-value">${v}<span class="stat-unit"> ${unit}</span></div>`;
+      grid.appendChild(card);
+    });
+    sec.body.appendChild(grid);
+
+    // Par trimestre
+    const trimTable = mkTable(['Trim.', 'Éligibles', 'Convertis', 'Non conv.', 'Taux', 'Exclus']);
+    d.par_trimestre.forEach(r => {
+      trimTable.tbody.insertAdjacentHTML('beforeend', `
+        <tr>
+          <td>${r.trimestre}</td><td>${r.eligible}</td><td>${r.converti}</td>
+          <td>${r.non_converti}</td><td>${r.taux} %</td><td>${r.exclus}</td>
+        </tr>`);
+    });
+    sec.body.appendChild(wrapTable(trimTable.table, 'Par trimestre'));
+
+    // Groupes non-convertis
+    const ncTable = mkTable(['Groupe', 'N']);
+    d.nc_groupes.forEach(r => {
+      ncTable.tbody.insertAdjacentHTML('beforeend', `<tr><td>${r.groupe}</td><td>${r.count}</td></tr>`);
+    });
+    sec.body.appendChild(wrapTable(ncTable.table, 'Groupes des non-convertis'));
+
+    addDownload(sec.header, 'conversion', 'CSV Conversion');
+    return sec.el;
+  }
+
+  // ─ 3. Funnel ────────────────────────────────────────────────────────────
+  function renderFunnel(d) {
+    const sec = mkSection('3. Funnel CS → Bilan → Traitement', 'funnel');
+    if (d.error) {
+      sec.body.appendChild(h('p', null, d.error));
+      return sec.el;
+    }
+
+    const grid = h('div', 'stat-grid');
+    [
+      [d.nb_bilans, 'Bilans analysés', ''],
+      [d.nb_via_cs1 + ' (' + d.pct_via_cs1 + '%)', 'Via 1ère CS', ''],
+      [d.nb_via_dv  + ' (' + d.pct_via_dv  + '%)', 'Via CS DV seul', ''],
+      [d.nb_directs + ' (' + d.pct_directs  + '%)', 'Directs', ''],
+      [d.taux_cs1_bilan, '1ère CS → Bilan', '%'],
+      [d.moy_csdv_via_cs1, 'CS DV / bilan via CS1', ''],
+      [d.delai_dcs_moy_j + ' j', 'Délai DCS moy.', ''],
+      [d.delai_dcs_med_j + ' j', 'Délai DCS méd.', ''],
+    ].forEach(([v, lbl, unit]) => {
+      const card = h('div', 'stat-card');
+      card.innerHTML = `<div class="stat-label">${lbl}</div>
+        <div class="stat-value">${v}<span class="stat-unit"> ${unit}</span></div>`;
+      grid.appendChild(card);
+    });
+    sec.body.appendChild(grid);
+
+    // Table de pilotage
+    const pilTable = mkTable(['Bilans/sem', 'Cas ttt/sem', '1ères CS/sem', 'CS DV/sem', 'Total CS/sem']);
+    d.table_pilotage.forEach(r => {
+      const tr = document.createElement('tr');
+      if (r.is_cible) tr.className = 'highlight';
+      tr.innerHTML = `
+        <td>${r.bilans.toFixed(2)}${r.is_cible ? ' ← cible' : ''}</td>
+        <td>${r.cas_ttt}</td><td>${r.cs1}</td><td>${r.csdv}</td><td>${r.total_cs}</td>`;
+      pilTable.tbody.appendChild(tr);
+    });
+    sec.body.appendChild(wrapTable(pilTable.table, 'Table de pilotage'));
+
+    addDownload(sec.header, 'funnel', 'CSV Funnel');
+    return sec.el;
+  }
+
+  // ── Helpers de rendu ─────────────────────────────────────────────────────
+
+  function mkSection(title, id) {
+    const el = h('div', 'section');
+    el.id = 'section-' + id;
+    const header = h('div', 'section-header');
+    header.appendChild(h('span', 'section-title', title));
+    const chips = h('div', 'download-chips');
+    header.appendChild(chips);
+    el.appendChild(header);
+    const body = h('div', 'section-body');
+    el.appendChild(body);
+    return { el, header, body, chips };
+  }
+
+  function addDownload(header, report, label) {
+    const chips = header.querySelector('.download-chips');
+    const a = h('a', 'btn', '⬇ ' + label);
+    a.href = "{% url 'analyse_download' 'REPORT' %}".replace('REPORT', report);
+    a.download = '';
+    chips.appendChild(a);
+  }
+
+  function mkTable(headers) {
+    const table = document.createElement('table');
+    const thead = document.createElement('thead');
+    const tr = document.createElement('tr');
+    headers.forEach(h => { const th = document.createElement('th'); th.textContent = h; tr.appendChild(th); });
+    thead.appendChild(tr);
+    table.appendChild(thead);
+    const tbody = document.createElement('tbody');
+    table.appendChild(tbody);
+    return { table, tbody };
+  }
+
+  function wrapTable(table, title) {
+    const wrap = h('div');
+    if (title) {
+      const lbl = h('div', null);
+      lbl.style.cssText = 'font-size:0.8rem;color:#6b7280;margin-bottom:0.5rem;font-weight:600;text-transform:uppercase;letter-spacing:0.04em';
+      lbl.textContent = title;
+      wrap.appendChild(lbl);
+    }
+    const tw = h('div', 'table-wrap');
+    tw.appendChild(table);
+    wrap.appendChild(tw);
+    return wrap;
+  }
+  </script>
+
+</body>
+</html>
